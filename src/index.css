@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --bg-natural: #FDFCF8;
+    --card-natural: #F5F2ED;
+    --border-natural: #E8E4D9;
+    --primary-natural: #5A5A40;
+    --text-natural: #4A4A40;
+    --text-muted: #8C867A;
+  }
+  
+  .dark {
+    --bg-natural: #171714;
+    --card-natural: #20201A;
+    --border-natural: #313128;
+    --primary-natural: #A3B18A;
+    --text-natural: #EDEAE1;
+    --text-muted: #A6A295;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    color: #4A4A40;
+    background-color: #FDFCF8;
+  }
+
+  html.dark {
+    color: #EDEAE1;
+    background-color: #171714;
+  }
+
+  body {
+    overflow-x: hidden;
+    margin: 0;
+    background-color: #FDFCF8;
+    color: #4A4A40;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  body.dark, .dark body {
+    background-color: #171714;
+    color: #EDEAE1;
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Natural soft grid pattern */
+.bg-natural-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(90, 90, 64, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(90, 90, 64, 0.05) 1px, transparent 1px);
+}
+
+.dark .bg-natural-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(163, 177, 138, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(163, 177, 138, 0.06) 1px, transparent 1px);
+}
+
+.bg-science-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(90, 90, 64, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(90, 90, 64, 0.05) 1px, transparent 1px);
+}
+
+.dark .bg-science-grid {
+  background-image: 
+    linear-gradient(to right, rgba(163, 177, 138, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(163, 177, 138, 0.06) 1px, transparent 1px);
+}
+
+.bg-science-grid-dark {
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, rgba(232, 228, 217, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(232, 228, 217, 0.1) 1px, transparent 1px);
+}
+
+.dark .bg-science-grid-dark {
+  background-image: 
+    linear-gradient(to right, rgba(163, 177, 138, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(163, 177, 138, 0.12) 1px, transparent 1px);
+}

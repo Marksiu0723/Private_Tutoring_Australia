@@ -1,0 +1,6 @@
+{
+  "name": "Shanon Lee Tutoring",
+  "description": "Premium modern private science tutoring for secondary students, specialising in Year 7–10 Science foundations and Year 11–12 HSC Chemistry and Biology.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
