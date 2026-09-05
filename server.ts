@@ -152,7 +152,7 @@ app.get('/api/client/appointments', async (req: Request, res: Response): Promise
 });
 
 // 3. Client Cancellation (Secure: verifies appointment ownership server-side)
-app.post('/api/client/cancel', async (req: Request, res: Response): Promise<void> => {
+const handleCancelAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
     const userEmail = await getVerifiedUserEmail(req);
     if (!userEmail) {
@@ -160,7 +160,7 @@ app.post('/api/client/cancel', async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const { appointmentId } = req.body;
+    const appointmentId = (req.params as any)?.id || req.body?.appointmentId;
     if (!appointmentId) {
       res.status(400).json({ error: 'appointmentId is required.' });
       return;
@@ -214,10 +214,13 @@ app.post('/api/client/cancel', async (req: Request, res: Response): Promise<void
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+app.post('/api/client/cancel', handleCancelAppointment);
+app.post('/api/client/appointments/:id/cancel', handleCancelAppointment);
 
 // 4. Client Rescheduling (Secure: verifies ownership and checks availability)
-app.post('/api/client/reschedule', async (req: Request, res: Response): Promise<void> => {
+const handleRescheduleAppointment = async (req: Request, res: Response): Promise<void> => {
   try {
     const userEmail = await getVerifiedUserEmail(req);
     if (!userEmail) {
@@ -225,7 +228,8 @@ app.post('/api/client/reschedule', async (req: Request, res: Response): Promise<
       return;
     }
 
-    const { appointmentId, newDate, newStartTime, newEndTime } = req.body;
+    const appointmentId = (req.params as any)?.id || req.body?.appointmentId;
+    const { newDate, newStartTime, newEndTime } = req.body;
     if (!appointmentId || !newDate || !newStartTime || !newEndTime) {
       res.status(400).json({ error: 'appointmentId, newDate, newStartTime, newEndTime are required.' });
       return;
@@ -314,7 +318,10 @@ app.post('/api/client/reschedule', async (req: Request, res: Response): Promise<
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+app.post('/api/client/reschedule', handleRescheduleAppointment);
+app.post('/api/client/appointments/:id/reschedule', handleRescheduleAppointment);
 
 // Vite middleware or static serving
 async function startServer() {

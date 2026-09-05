@@ -117,6 +117,9 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          appointmentId: cancelModalAppt.id,
+        }),
       });
 
       if (!response.ok) {
@@ -192,6 +195,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          appointmentId: rescheduleModalAppt.id,
           newDate: newRescheduleDate,
           newStartTime: selectedRescheduleSlot.startTimeStr,
           newEndTime: selectedRescheduleSlot.endTimeStr,

@@ -17,25 +17,11 @@ export const PACKAGES: PackageOption[] = [
     isPopular: false,
   },
   {
-    id: '4-pack',
-    sessions: 4,
-    titleKey: 'packages.4pack.title',
-    subtitleKey: 'packages.4pack.subtitle',
-    isPopular: false,
-  },
-  {
-    id: '8-pack',
-    sessions: 8,
-    titleKey: 'packages.8pack.title',
-    subtitleKey: 'packages.8pack.subtitle',
+    id: '10-pack',
+    sessions: 10,
+    titleKey: 'packages.10pack.title',
+    subtitleKey: 'packages.10pack.subtitle',
     isPopular: true,
-  },
-  {
-    id: '12-pack',
-    sessions: 12,
-    titleKey: 'packages.12pack.title',
-    subtitleKey: 'packages.12pack.subtitle',
-    isPopular: false,
   },
 ];
 
@@ -65,29 +51,30 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
         </div>
 
         {/* Packages Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
           {PACKAGES.map((pkg) => {
+            const isTenPack = pkg.id === '10-pack';
             return (
               <div
                 key={pkg.id}
                 id={`package-card-${pkg.id}`}
-                className={`rounded-[24px] sm:rounded-[28px] p-6 sm:p-7 flex flex-col justify-between transition-all relative ${
+                className={`rounded-[28px] sm:rounded-[32px] p-7 sm:p-8 flex flex-col justify-between transition-all relative ${
                   pkg.isPopular
-                    ? 'bg-[#5A5A40] dark:bg-[#242D1F] text-[#FDFCF8] shadow-lg border border-[#484833] dark:border-[#3D4C35] lg:scale-[1.02]'
-                    : 'bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#313128] text-[#4A4A40] dark:text-[#EDEAE1] hover:border-[#5A5A40] dark:hover:border-[#A3B18A] hover:shadow-sm'
+                    ? 'bg-[#5A5A40] dark:bg-[#242D1F] text-[#FDFCF8] shadow-xl border-2 border-[#484833] dark:border-[#3D4C35] md:scale-[1.02]'
+                    : 'bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#313128] text-[#4A4A40] dark:text-[#EDEAE1] hover:border-[#5A5A40] dark:hover:border-[#A3B18A] shadow-sm'
                 }`}
               >
-                {/* Popular Badge */}
+                {/* Badge */}
                 {pkg.isPopular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#E8E4D9] dark:bg-[#A3B18A] text-[#5A5A40] dark:text-[#171714] text-[10px] font-semibold uppercase tracking-widest py-1 px-4 rounded-full border border-[#D1C9BC] dark:border-[#8F9E72] shadow-xs">
-                    {t('packages.recommended')}
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#E8E4D9] dark:bg-[#A3B18A] text-[#5A5A40] dark:text-[#171714] text-[10px] font-bold uppercase tracking-widest py-1 px-4 rounded-full border border-[#D1C9BC] dark:border-[#8F9E72] shadow-xs whitespace-nowrap">
+                    {t('packages.10pack.recurrenceBadge')}
                   </div>
                 )}
 
                 <div>
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full ${
+                      className={`text-[11px] font-semibold uppercase tracking-wider px-3.5 py-1 rounded-full ${
                         pkg.isPopular
                           ? 'bg-[#484833] dark:bg-[#1D2518] text-[#E8E4D9] dark:text-[#C6D4AB]'
                           : 'bg-[#E8E4D9] dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#A3B18A]'
@@ -95,10 +82,17 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                     >
                       {pkg.sessions} {t('packages.lessons')}
                     </span>
+                    <span
+                      className={`text-[10px] font-semibold uppercase tracking-wider ${
+                        pkg.isPopular ? 'text-[#D1C9BC]' : 'text-[#8C867A] dark:text-[#A6A295]'
+                      }`}
+                    >
+                      {isTenPack ? 'Recurring Cadence' : 'One-Time Session'}
+                    </span>
                   </div>
 
                   <h3
-                    className={`text-xl sm:text-2xl font-serif mt-5 tracking-tight ${
+                    className={`text-2xl sm:text-3xl font-serif mt-5 tracking-tight font-bold ${
                       pkg.isPopular ? 'text-white' : 'text-[#2D2C27] dark:text-[#EDEAE1]'
                     }`}
                   >
@@ -106,7 +100,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                   </h3>
 
                   <p
-                    className={`text-xs sm:text-sm mt-2 leading-relaxed min-h-[40px] sm:min-h-[44px] font-light ${
+                    className={`text-xs sm:text-sm mt-2.5 leading-relaxed min-h-[44px] font-light ${
                       pkg.isPopular ? 'text-[#E8E4D9]' : 'text-[#6B6658] dark:text-[#A6A295]'
                     }`}
                   >
@@ -119,7 +113,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                       <div>
                         <div className="flex items-baseline gap-1.5">
                           <span
-                            className={`text-3xl font-serif font-bold ${
+                            className={`text-3xl sm:text-4xl font-serif font-bold ${
                               pkg.isPopular ? 'text-white' : 'text-[#2D2C27] dark:text-[#EDEAE1]'
                             }`}
                           >
@@ -138,7 +132,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                             pkg.isPopular ? 'text-[#E8E4D9]' : 'text-[#5A5A40] dark:text-[#C6D4AB]'
                           }`}
                         >
-                          ${samplePrice} per {pkg.sessions === 1 ? 'lesson' : 'session'}
+                          ${samplePrice} per 60-min lesson
                         </span>
                       </div>
                     ) : (
@@ -160,7 +154,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                   </div>
 
                   {/* Highlights */}
-                  <ul className="mt-6 space-y-3 text-xs sm:text-sm">
+                  <ul className="mt-6 space-y-3.5 text-xs sm:text-sm">
                     <li className="flex items-center gap-2.5">
                       <Check
                         className={`w-4 h-4 shrink-0 ${
@@ -168,7 +162,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        {pkg.sessions}x 60-min 1-on-1 lessons
+                        {pkg.sessions}x 60-min 1-on-1 private lessons
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">
@@ -178,7 +172,9 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        Flexible scheduling options
+                        {isTenPack
+                          ? 'Recurring options in all available dates (Weekly, Fortnightly, or Custom)'
+                          : 'Targeted single assessment & exam topic deep dive'}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">
@@ -188,28 +184,58 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        Client portal rescheduling
+                        7 Days a week availability (9:00 AM – 9:00 PM)
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check
+                        className={`w-4 h-4 shrink-0 font-bold ${
+                          pkg.isPopular ? 'text-[#C6D4AB]' : 'text-[#5A5A40] dark:text-[#A3B18A]'
+                        }`}
+                      />
+                      <span className={`font-medium ${pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#2D2C27] dark:text-[#EDEAE1]'}`}>
+                        Change dates anytime in your Client Portal
                       </span>
                     </li>
                   </ul>
                 </div>
 
-                <div className="mt-7 sm:mt-8 pt-4">
+                <div className="mt-8 pt-4">
                   <button
                     id={`select-package-${pkg.id}-btn`}
                     onClick={() => onSelectPackage(pkg.id)}
-                    className={`w-full py-3.5 px-4 rounded-full text-xs uppercase tracking-widest font-semibold transition-all cursor-pointer text-center min-h-[44px] ${
+                    className={`w-full py-4 px-5 rounded-full text-xs uppercase tracking-widest font-semibold transition-all cursor-pointer text-center min-h-[48px] shadow-sm ${
                       pkg.isPopular
-                        ? 'bg-[#FDFCF8] hover:bg-[#E8E4D9] text-[#5A5A40] shadow-sm'
+                        ? 'bg-[#FDFCF8] hover:bg-[#E8E4D9] text-[#5A5A40] font-bold'
                         : 'bg-[#5A5A40] hover:bg-[#484833] dark:bg-[#A3B18A] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714]'
                     }`}
                   >
-                    {t('packages.select')}
+                    {isTenPack ? 'Book 10 Sessions' : 'Book 1 Session'}
                   </button>
                 </div>
               </div>
             );
           })}
+        </div>
+
+        {/* Client Portal Flexibility Guarantee Callout */}
+        <div className="mt-12 max-w-4xl mx-auto rounded-[24px] p-6 sm:p-7 bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#313128] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#5A5A40] dark:text-[#A3B18A]">
+              Full Schedule Flexibility
+            </span>
+            <h4 className="text-base sm:text-lg font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
+              Need to reschedule or adjust a date later?
+            </h4>
+            <p className="text-xs text-[#6B6658] dark:text-[#A6A295] font-light max-w-xl">
+              All bookings include full access to your student Client Portal. You can easily change dates, update time slots, or view your upcoming schedule anytime without administrative hassle.
+            </p>
+          </div>
+          <div className="shrink-0">
+            <span className="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold bg-[#E8E4D9] dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]">
+              Client Portal Included
+            </span>
+          </div>
         </div>
       </div>
     </section>

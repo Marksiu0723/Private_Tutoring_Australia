@@ -449,51 +449,79 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           {/* STEP 2: Select Package */}
           {step === 2 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                {t('booking.step2')}: Choose Session Package
-              </h3>
+              <div>
+                <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                  {t('booking.step2')}: Choose Session Package
+                </h3>
+                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] mt-1">
+                  Single Session Tutoring • Choose 1 lesson or book 10 sessions with recurring scheduling options.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {PACKAGES.map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    onClick={() => {
-                      setSelectedPackageId(pkg.id);
-                      if (pkg.id === 'single') {
-                        setRecurrence('one-time');
-                      }
-                    }}
-                    className={`p-5 rounded-[24px] border transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedPackageId === pkg.id
-                        ? 'border-[#5A5A40] dark:border-[#A3B18A] bg-[#E8E4D9]/40 dark:bg-[#25251E] shadow-xs'
-                        : 'border-[#E8E4D9] dark:border-[#2E2E24] hover:border-[#8C867A] dark:hover:border-[#5A5A40] bg-[#F5F2ED] dark:bg-[#20201A]'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] text-base sm:text-lg">
-                          {t(pkg.titleKey)}
-                        </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#2A2A22] px-2.5 py-0.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E]">
-                          {pkg.sessions} lessons
+                {PACKAGES.map((pkg) => {
+                  const isTenPack = pkg.id === '10-pack';
+                  return (
+                    <div
+                      key={pkg.id}
+                      onClick={() => {
+                        setSelectedPackageId(pkg.id);
+                        if (pkg.id === 'single') {
+                          setRecurrence('one-time');
+                        } else {
+                          setRecurrence('weekly');
+                        }
+                      }}
+                      className={`p-5 rounded-[24px] border transition-all cursor-pointer flex flex-col justify-between relative ${
+                        selectedPackageId === pkg.id
+                          ? 'border-[#5A5A40] dark:border-[#A3B18A] bg-[#E8E4D9]/40 dark:bg-[#25251E] shadow-sm'
+                          : 'border-[#E8E4D9] dark:border-[#2E2E24] hover:border-[#8C867A] dark:hover:border-[#5A5A40] bg-[#F5F2ED] dark:bg-[#20201A]'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] text-base sm:text-lg">
+                            {t(pkg.titleKey)}
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#2A2A22] px-2.5 py-0.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E] shrink-0">
+                            {pkg.sessions} {pkg.sessions === 1 ? 'lesson' : 'lessons'}
+                          </span>
+                        </div>
+
+                        {isTenPack && (
+                          <span className="inline-block mt-1 text-[9px] uppercase font-bold tracking-widest text-[#5A5A40] dark:text-[#A3B18A]">
+                            Recurring in All Available Dates
+                          </span>
+                        )}
+
+                        <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1.5 font-light leading-relaxed">
+                          {t(pkg.subtitleKey)}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 pt-3.5 border-t border-[#E8E4D9] dark:border-[#2E2E24] text-xs font-medium text-[#8C867A] dark:text-[#A6A295] flex items-center justify-between">
+                        {selectedService.price === null ? (
+                          <span>{t('services.pricePending')}</span>
+                        ) : (
+                          <span>
+                            Total: ${selectedService.price * pkg.sessions} AUD
+                          </span>
+                        )}
+                        <span className="text-[10px] text-[#5A5A40] dark:text-[#C6D4AB]">
+                          Flexible Dates
                         </span>
                       </div>
-                      <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1.5 font-light leading-relaxed">
-                        {t(pkg.subtitleKey)}
-                      </p>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="mt-4 pt-3.5 border-t border-[#E8E4D9] dark:border-[#2E2E24] text-xs font-medium text-[#8C867A] dark:text-[#A6A295]">
-                      {selectedService.price === null ? (
-                        <span>{t('services.pricePending')}</span>
-                      ) : (
-                        <span>
-                          Estimated total: ${selectedService.price * pkg.sessions} AUD
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              {/* Notice */}
+              <div className="p-3.5 rounded-2xl bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#2E2E24] text-xs text-[#6B6658] dark:text-[#A6A295] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
+                <span>
+                  <strong>Client Portal Guarantee:</strong> You can change dates and times for any booked session anytime in your Client Portal.
+                </span>
               </div>
             </div>
           )}
@@ -705,9 +733,14 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
               {/* Overview of all scheduled lessons */}
               <div className="space-y-2 pt-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
-                  All Scheduled Sessions
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
+                    All Scheduled Sessions
+                  </span>
+                  <span className="text-[10px] text-[#5A5A40] dark:text-[#C6D4AB] font-semibold">
+                    Change dates anytime in Client Portal
+                  </span>
+                </div>
                 <div className="space-y-1.5 text-xs">
                   {occurrences.map((occ, idx) => (
                     <div
@@ -880,6 +913,11 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                       ${selectedService.price * selectedPackage.sessions} AUD estimated
                     </span>
                   )}
+                </div>
+
+                <div className="pt-2 text-[11px] text-[#5A5A40] dark:text-[#C6D4AB] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>You can change or reschedule any of these lesson dates in your Client Portal anytime.</span>
                 </div>
               </div>
 

@@ -58,7 +58,7 @@ export interface AdminUser {
   created_at?: string;
 }
 
-export type PackageId = 'single' | '4-pack' | '8-pack' | '12-pack';
+export type PackageId = 'single' | '10-pack' | '4-pack' | '8-pack' | '12-pack';
 
 export interface PackageOption {
   id: PackageId;
