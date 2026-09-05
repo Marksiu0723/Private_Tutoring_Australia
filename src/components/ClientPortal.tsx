@@ -27,7 +27,7 @@ interface ClientPortalProps {
 export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpenBooking }) => {
   const { t, language } = useLanguage();
   const { user, session, signOut } = useAuth();
-  const { businessHours, blockedDates, businessSettings, services } = useData();
+  const { businessHours, blockedDates, businessSettings, services, adminAppointments, updateAppointmentStatus } = useData();
 
   const getServiceName = (s?: { name: string; id?: string } | null) => {
     if (!s) return language === 'zh' ? '中学科学辅导' : 'Science Tutoring';
@@ -78,6 +78,14 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       });
 
       if (!response.ok) {
+        // Fallback for static hosting environments (e.g. GitHub Pages)
+        const localMatches = adminAppointments.filter(
+          (a) => user?.email && a.email.toLowerCase() === user.email.toLowerCase()
+        );
+        if (localMatches.length > 0 || response.status === 404) {
+          setAppointments(localMatches);
+          return;
+        }
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to retrieve your appointments.');
       }
@@ -86,11 +94,18 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       setAppointments(data.appointments || []);
     } catch (err: any) {
       console.error('Error fetching client appointments:', err);
-      setErrorMsg(err.message || 'Error loading appointments.');
+      const localMatches = adminAppointments.filter(
+        (a) => user?.email && a.email.toLowerCase() === user.email.toLowerCase()
+      );
+      if (localMatches.length > 0) {
+        setAppointments(localMatches);
+      } else {
+        setErrorMsg(err.message || 'Error loading appointments.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [user, session]);
+  }, [user, session, adminAppointments]);
 
   useEffect(() => {
     loadClientAppointments();
