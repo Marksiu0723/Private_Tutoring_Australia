@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useData } from '../context/DataContext';
 import {
+  Service,
   PackageId,
   RecurrenceType,
   OccurrenceSlot,
@@ -47,7 +48,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   initialPackageId,
   onOpenClientPortal,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const {
     activeServices,
     businessHours,
@@ -56,6 +57,30 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     adminAppointments,
     createAppointmentsPublic,
   } = useData();
+
+  const getServiceName = (service: Service) => {
+    if (language === 'zh') {
+      if (service.id === 'srv-junior-1' || service.name.toLowerCase().includes('junior') || service.name.includes('7')) {
+        return t('services.srvJuniorName');
+      }
+      if (service.id === 'srv-hsc-2' || service.name.toLowerCase().includes('hsc') || service.name.includes('11')) {
+        return t('services.srvHscName');
+      }
+    }
+    return service.name;
+  };
+
+  const getServiceDescription = (service: Service) => {
+    if (language === 'zh') {
+      if (service.id === 'srv-junior-1' || service.name.toLowerCase().includes('junior') || service.name.includes('7')) {
+        return t('services.srvJuniorDesc');
+      }
+      if (service.id === 'srv-hsc-2' || service.name.toLowerCase().includes('hsc') || service.name.includes('11')) {
+        return t('services.srvHscDesc');
+      }
+    }
+    return service.description || '';
+  };
 
   // Wizard Steps: 1 to 7
   // 1: Service, 2: Package, 3: Recurrence, 4: Dates & Times, 5: Client Info, 6: Review, 7: Success
@@ -401,7 +426,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           {step === 1 && (
             <div className="space-y-4">
               <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                {t('booking.step1')}: Select Tutoring Subject
+                {t('booking.step1')}: {t('booking.step1SelectSubject')}
               </h3>
 
               <div className="space-y-3">
@@ -418,14 +443,14 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                     <div>
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] text-base sm:text-lg">
-                          {srv.name}
+                          {getServiceName(srv)}
                         </span>
                         <span className="text-[11px] bg-white dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] px-2.5 py-0.5 rounded-full font-medium border border-[#E8E4D9] dark:border-[#38382E]">
-                          {srv.duration_minutes} min
+                          {srv.duration_minutes} {language === 'zh' ? '分钟' : 'min'}
                         </span>
                       </div>
                       <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light leading-relaxed">
-                        {srv.description}
+                        {getServiceDescription(srv)}
                       </p>
                     </div>
 
@@ -436,7 +461,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                         </span>
                       ) : (
                         <span className="text-base font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
-                          ${srv.price} AUD
+                          ${srv.price} {language === 'zh' ? '澳元' : 'AUD'}
                         </span>
                       )}
                     </div>
@@ -484,7 +509,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                             {t(pkg.titleKey)}
                           </span>
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#2A2A22] px-2.5 py-0.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E] shrink-0">
-                            {pkg.sessions} {pkg.sessions === 1 ? 'lesson' : 'lessons'}
+                            {pkg.sessions} {language === 'zh' ? '课时' : (pkg.sessions === 1 ? 'lesson' : 'lessons')}
                           </span>
                         </div>
 
@@ -504,7 +529,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                           <span>{t('services.pricePending')}</span>
                         ) : (
                           <span>
-                            Total: ${selectedService.price * pkg.sessions} AUD
+                            {t('booking.total')} ${selectedService.price * pkg.sessions} {language === 'zh' ? '澳元' : 'AUD'}
                           </span>
                         )}
                         <span className="text-[10px] text-[#5A5A40] dark:text-[#C6D4AB]">
@@ -857,19 +882,21 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[26px] p-5 sm:p-6 border border-[#E8E4D9] dark:border-[#2E2E24] space-y-4 text-sm">
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewService')}</span>
-                  <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{selectedService.name}</span>
+                  <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{getServiceName(selectedService)}</span>
                 </div>
 
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewPackage')}</span>
                   <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                    {t(selectedPackage.titleKey)} ({selectedPackage.sessions} sessions)
+                    {t(selectedPackage.titleKey)} ({selectedPackage.sessions} {language === 'zh' ? '课时' : 'sessions'})
                   </span>
                 </div>
 
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewCadence')}</span>
-                  <span className="font-semibold capitalize text-[#2D2C27] dark:text-[#EDEAE1]">{recurrence}</span>
+                  <span className="font-semibold capitalize text-[#2D2C27] dark:text-[#EDEAE1]">
+                    {recurrence === 'weekly' ? (language === 'zh' ? '每周排课' : 'Weekly') : (language === 'zh' ? '单次授课' : 'One-time')}
+                  </span>
                 </div>
 
                 <div>
@@ -948,7 +975,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[26px] p-6 border border-[#E8E4D9] dark:border-[#2E2E24] text-left text-xs space-y-2.5 max-w-md mx-auto">
                 <div className="flex justify-between">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.successSubject')}</span>
-                  <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{confirmedData.service.name}</span>
+                  <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{getServiceName(confirmedData.service)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.successStudent')}</span>

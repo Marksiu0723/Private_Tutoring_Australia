@@ -31,10 +31,10 @@ export const AboutSection: React.FC = () => {
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[#E8E4D9] dark:text-[#C6D4AB]">
-                  Teaching Schedule
+                  {t('about.scheduleTitle')}
                 </p>
                 <p className="text-xs font-serif font-medium text-white dark:text-[#EDEAE1] mt-0.5">
-                  7 Days • 9:00 AM – 9:00 PM
+                  {t('about.scheduleHours')}
                 </p>
               </div>
             </div>
@@ -43,7 +43,7 @@ export const AboutSection: React.FC = () => {
           {/* Right Column: Educational Statement */}
           <div className="lg:col-span-7 space-y-6 mt-4 lg:mt-0">
             <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.25em] text-[#5A5A40] dark:text-[#A3B18A] px-4 py-1.5 rounded-full bg-[#E8E4D9] dark:bg-[#2A2A22] border border-[#D1C9BC] dark:border-[#38382E]">
-              Teaching Approach
+              {t('about.approachTag')}
             </span>
 
             <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight leading-tight">
@@ -66,7 +66,7 @@ export const AboutSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="text-base font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                    Direct Questions or Inquiries
+                    {t('about.inquiries')}
                   </h4>
                   <p className="text-xs text-[#8C867A] dark:text-[#A6A295] mt-0.5 break-all">
                     {businessEmail}

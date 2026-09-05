@@ -39,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({
               </span>
             </div>
             <p className="text-sm text-[#D1C9BC] dark:text-[#9E9A8E] leading-relaxed max-w-sm font-light">
-              Personalised secondary science mentoring for Year 7–10 foundations and Stage 6 HSC Chemistry & Biology.
+              {t('footer.tagline')}
             </p>
             <div className="flex items-center gap-2.5 text-xs text-[#D1C9BC] dark:text-[#9E9A8E] pt-2 font-medium">
               <Clock className="w-4 h-4 text-[#A89F8D] shrink-0" />
@@ -50,7 +50,7 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Quick Links */}
           <div className="lg:col-span-3 space-y-4">
             <h4 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#A89F8D]">
-              Navigation
+              {t('footer.navigation')}
             </h4>
             <ul className="space-y-3 text-xs uppercase tracking-wider font-medium text-[#D1C9BC] dark:text-[#A6A295]">
               <li>
@@ -130,7 +130,7 @@ export const Footer: React.FC<FooterProps> = ({
             © {new Date().getFullYear()} {businessName}. {t('footer.rights')}
           </p>
           <p className="text-[#8C867A] dark:text-[#6E6A60]">
-            NSW Curriculum Aligned • English & 简体中文 Available
+            {t('footer.curriculumAligned')}
           </p>
         </div>
       </div>

@@ -26,7 +26,7 @@ export const PACKAGES: PackageOption[] = [
 ];
 
 export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackage }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { activeServices } = useData();
 
   // Find a representative active service to check if numeric prices exist
@@ -43,7 +43,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
             {t('packages.title')}
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight mt-4">
-            Structured Tutoring Plans
+            {t('packages.heading')}
           </h2>
           <p className="text-base sm:text-lg text-[#6B6658] dark:text-[#A6A295] mt-3.5 leading-relaxed font-light">
             {t('packages.subtitle')}
@@ -87,7 +87,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         pkg.isPopular ? 'text-[#D1C9BC]' : 'text-[#8C867A] dark:text-[#A6A295]'
                       }`}
                     >
-                      {isTenPack ? 'Recurring Cadence' : 'One-Time Session'}
+                      {isTenPack ? t('packages.recurringCadence') : t('packages.oneTimeSession')}
                     </span>
                   </div>
 
@@ -124,7 +124,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                               pkg.isPopular ? 'text-[#D1C9BC]' : 'text-[#8C867A] dark:text-[#A6A295]'
                             }`}
                           >
-                            AUD est.
+                            {t('packages.audEst')}
                           </span>
                         </div>
                         <span
@@ -132,7 +132,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                             pkg.isPopular ? 'text-[#E8E4D9]' : 'text-[#5A5A40] dark:text-[#C6D4AB]'
                           }`}
                         >
-                          ${samplePrice} per 60-min lesson
+                          ${samplePrice} {t('packages.perLesson')}
                         </span>
                       </div>
                     ) : (
@@ -162,7 +162,9 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        {pkg.sessions}x 60-min 1-on-1 private lessons
+                        {language === 'zh'
+                          ? `${pkg.sessions} ${t('packages.lessonsUnit')}`
+                          : `${pkg.sessions}x ${t('packages.lessonsUnit')}`}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">
@@ -173,8 +175,8 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
                         {isTenPack
-                          ? 'Recurring options in all available dates (Weekly, Fortnightly, or Custom)'
-                          : 'Targeted single assessment & exam topic deep dive'}
+                          ? t('packages.10packHighlight')
+                          : t('packages.singleHighlight')}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">
@@ -184,7 +186,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        7 Days a week availability (9:00 AM – 9:00 PM)
+                        {t('packages.sevenDaysAvailability')}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">
@@ -194,7 +196,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={`font-medium ${pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#2D2C27] dark:text-[#EDEAE1]'}`}>
-                        Change dates anytime in your Client Portal
+                        {t('packages.changePortalAnytime')}
                       </span>
                     </li>
                   </ul>
@@ -210,7 +212,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         : 'bg-[#5A5A40] hover:bg-[#484833] dark:bg-[#A3B18A] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714]'
                     }`}
                   >
-                    {isTenPack ? 'Book 10 Sessions' : 'Book 1 Session'}
+                    {isTenPack ? t('packages.book10Btn') : t('packages.book1Btn')}
                   </button>
                 </div>
               </div>
@@ -222,18 +224,18 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
         <div className="mt-12 max-w-4xl mx-auto rounded-[24px] p-6 sm:p-7 bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#313128] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="space-y-1">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#5A5A40] dark:text-[#A3B18A]">
-              Full Schedule Flexibility
+              {t('packages.flexibilityTitle')}
             </span>
             <h4 className="text-base sm:text-lg font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
-              Need to reschedule or adjust a date later?
+              {t('packages.flexibilityHeading')}
             </h4>
             <p className="text-xs text-[#6B6658] dark:text-[#A6A295] font-light max-w-xl">
-              All bookings include full access to your student Client Portal. You can easily change dates, update time slots, or view your upcoming schedule anytime without administrative hassle.
+              {t('packages.flexibilityDesc')}
             </p>
           </div>
           <div className="shrink-0">
             <span className="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold bg-[#E8E4D9] dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]">
-              Client Portal Included
+              {t('packages.portalIncludedBadge')}
             </span>
           </div>
         </div>

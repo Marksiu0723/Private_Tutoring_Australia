@@ -37,16 +37,34 @@ export const translations = {
 
   // Services
   'services.title': { en: 'Tutoring Services', zh: '辅导科目与服务' },
+  'services.heading': { en: 'Targeted Scientific Instruction', zh: '精准对标新州教学大纲的科学辅导' },
   'services.subtitle': {
     en: 'Targeted scientific instruction calibrated to the NSW syllabus and individual student pace.',
     zh: '严格对照新南威尔士州教学大纲（NSW Syllabus），因材施教。',
   },
   'services.duration': { en: 'Duration', zh: '课时' },
   'services.minutes': { en: 'minutes', zh: '分钟' },
+  'services.audPerSession': { en: 'AUD / session', zh: '澳元 / 课时' },
   'services.pricePending': { en: 'Price subject to change', zh: '课时费待定（请咨询）' },
   'services.bookBtn': { en: 'Book This Lesson', zh: '预约此课程' },
   'services.juniorBadge': { en: 'Years 7–10 Foundations', zh: '7–10年级 科学通识基础' },
   'services.hscBadge': { en: 'Years 11–12 HSC Mastery', zh: '11–12年级 HSC高阶提分' },
+  'services.srvJuniorName': { en: 'Junior Year (Year 7 - 10)', zh: '初中科学综合（7 - 10年级）' },
+  'services.srvJuniorDesc': {
+    en: 'Personalised science foundation lessons that cover all strands to build a strong base for senior study.',
+    zh: '个性化科学基础辅导，全面覆盖四大知识领域，为高年级理科奠定扎实学术根基。',
+  },
+  'services.srvJuniorH1': { en: 'Comprehensive Stage 4 & 5 Core Strands', zh: '全面覆盖Stage 4与5阶段核心知识模块' },
+  'services.srvJuniorH2': { en: 'Working Scientifically & Inquiry Skills', zh: '实验探究设计与科学思维综合训练' },
+  'services.srvJuniorH3': { en: 'Early Preparation for Stage 6 Science', zh: '提前衔接Stage 6高阶理科核心考点' },
+  'services.srvHscName': { en: 'HSC (Year 11 - 12)', zh: 'HSC高阶辅导（11 - 12年级）' },
+  'services.srvHscDesc': {
+    en: 'Chemistry / Biology.',
+    zh: '化学 / 生物学专项深度辅导。',
+  },
+  'services.srvHscH1': { en: 'HSC Chemistry Modules 1–8 Deep Dive', zh: 'HSC化学模块1–8全面深度精讲' },
+  'services.srvHscH2': { en: 'HSC Biology Modules 1–8 Syllabus Coverage', zh: 'HSC生物模块1–8大纲考点全面突破' },
+  'services.srvHscH3': { en: 'Past Paper Analysis & Extended Response Technique', zh: '历年HSC真题剖析与高分长答题技巧' },
 
   // Why Section
   'why.title': { en: 'Why Personalised Science Tutoring Matters', zh: '为什么选择一对一科学私教？' },
@@ -92,7 +110,9 @@ export const translations = {
   'deep.hsc.f4': { en: 'Depth Study consultation & practical exam guidance', zh: '深度探究报告（Depth Study）指导与实验题答题思路' },
 
   // Packages
-  'packages.title': { en: 'Structured Tutoring Plans', zh: '结构化辅导计划' },
+  'packages.badge': { en: 'Structured Tutoring Plans', zh: '辅导方案体系' },
+  'packages.title': { en: 'Structured Tutoring Plans', zh: '结构化科学辅导计划' },
+  'packages.heading': { en: 'Structured Tutoring Plans', zh: '结构化科学辅导计划' },
   'packages.subtitle': {
     en: 'Single Session Tutoring • Book 1 session for targeted concepts or book 10 sessions with recurring options in all available dates. Change dates anytime in your Client Portal.',
     zh: '专属单课时辅导体系 • 可预约1次独立课时，或预约10次课时享受规律排课。学员中心支持随时自主改期。',
@@ -495,6 +515,21 @@ export const translations = {
   'conflict.notice': { en: 'Requires advance notice', zh: '需提前预约' },
   'conflict.overlapExisting': { en: 'Time slot overlaps with an existing confirmed appointment', zh: '该时段与已确认的既有课程冲突' },
   'conflict.overlapBasket': { en: 'Conflicts with another lesson in your current schedule', zh: '与您当前排课中的另一节课冲突' },
+
+  // Additional section keys
+  'hero.overlayTitle': { en: 'NSW Science Syllabus', zh: 'NSW 新州科学大纲' },
+  'hero.overlaySubtitle': { en: 'Stage 4, 5 & Stage 6 (HSC)', zh: 'Stage 4, 5 及 Stage 6 (HSC)' },
+  'curriculum.stage45': { en: 'NSW Stage 4 & 5', zh: 'NSW 阶段 4 & 5 (Stage 4 & 5)' },
+  'why.methodologyTag': { en: 'Educational Methodology', zh: '教学理念与方法' },
+  'why.mentorshipTitle': { en: 'Tailored Mentorship', zh: '专属针对性辅导' },
+  'why.mentorshipDesc': {
+    en: 'Personalised pacing ensures students ask the questions they might hesitate to ask in a 30-person classroom.',
+    zh: '个性化节奏让学生敢于随时提问，击破在大班教学中容易遗漏的盲点。',
+  },
+  'booking.step1SelectSubject': { en: 'Select Tutoring Subject', zh: '选择辅导科目' },
+  'booking.total': { en: 'Total:', zh: '总计：' },
+  'portal.errorSelectSlot': { en: 'Please select an available date and time slot.', zh: '请选择可用的日期与时段。' },
+  'nav.themeLabel': { en: 'Theme / 浅深色模式', zh: '外观主题 / Theme' },
 };
 
 export function getTranslation(key: string, lang: Language): string {

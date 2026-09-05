@@ -187,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {businessName}
                 </span>
                 <span className="block text-[10px] sm:text-[11px] font-medium text-[#8C867A] dark:text-[#A6A295] uppercase tracking-[0.2em] mt-1 truncate">
-                  Science & HSC
+                  {language === 'zh' ? '中学科学与HSC辅导' : 'Science & HSC'}
                 </span>
               </div>
             </button>
@@ -373,7 +373,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Theme Selector Segmented in Mobile Drawer */}
           <div className="pt-3 pb-1 border-t border-[#E8E4D9] dark:border-[#2D2D24]">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-[#8C867A] dark:text-[#A6A295] mb-2 px-1">
-              Theme / 浅深色模式
+              {t('nav.themeLabel')}
             </div>
             <ThemeToggle variant="segmented" className="w-full justify-center" />
           </div>

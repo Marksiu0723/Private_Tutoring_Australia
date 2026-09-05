@@ -39,14 +39,14 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
               <div className="p-4 sm:p-5 bg-[#F5F2ED] dark:bg-[#20201A] border-t border-[#E8E4D9] dark:border-[#313128] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold text-[#5A5A40] dark:text-[#A3B18A] uppercase tracking-[0.2em] block">
-                    NSW Stage 4 & 5
+                    {t('curriculum.stage45')}
                   </span>
                   <span className="text-sm font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                    Years 7, 8, 9 & 10 Science
+                    {t('curriculum.juniorYears')}
                   </span>
                 </div>
                 <span className="text-[10px] uppercase tracking-widest font-semibold px-3 py-1 bg-[#E8E4D9] dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] rounded-full border border-[#D1C9BC] dark:border-[#38382E]">
-                  Core Foundations
+                  {t('curriculum.coreFoundations')}
                 </span>
               </div>
             </div>
@@ -56,7 +56,7 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
           <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E8E4D9] dark:bg-[#2A2A22] border border-[#D1C9BC] dark:border-[#38382E] text-[#5A5A40] dark:text-[#A3B18A] text-[10px] font-semibold uppercase tracking-[0.25em]">
               <Layers className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>NSW Science Foundations</span>
+              <span>{t('curriculum.foundationsTag')}</span>
             </div>
 
             <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight leading-tight">
@@ -99,7 +99,7 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
                 onClick={() => handleTriggerBooking('junior')}
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-xs uppercase tracking-widest font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] bg-white dark:bg-[#20201A] hover:bg-[#F5F2ED] dark:hover:bg-[#282820] border border-[#E8E4D9] dark:border-[#313128] rounded-full transition-all cursor-pointer shadow-xs w-full sm:w-auto min-h-[44px]"
               >
-                <span>Schedule Junior Science Lesson</span>
+                <span>{t('curriculum.juniorBookBtn')}</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
               </button>
             </div>
@@ -114,7 +114,7 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E8E4D9] dark:bg-[#2A2A22] border border-[#D1C9BC] dark:border-[#38382E] text-[#5A5A40] dark:text-[#A3B18A] text-[10px] font-semibold uppercase tracking-[0.25em]">
               <TestTube2 className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>Stage 6 HSC Preparation</span>
+              <span>{t('curriculum.hscTag')}</span>
             </div>
 
             <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight leading-tight">
@@ -157,7 +157,7 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
                 onClick={() => handleTriggerBooking('hsc')}
                 className="inline-flex items-center justify-center gap-2 px-8 py-3.5 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full transition-all cursor-pointer shadow-sm w-full sm:w-auto min-h-[44px]"
               >
-                <span>Schedule HSC Science Lesson</span>
+                <span>{t('curriculum.hscBookBtn')}</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#E8E4D9] dark:text-[#171714]" />
               </button>
             </div>
@@ -174,10 +174,10 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
               />
               <div className="p-3.5 sm:p-4 bg-[#F5F2ED] dark:bg-[#20201A] text-center border-t border-[#E8E4D9] dark:border-[#313128]">
                 <span className="text-xs font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] block">
-                  HSC Chemistry
+                  {t('curriculum.chemTitle')}
                 </span>
                 <span className="text-[10px] sm:text-[11px] text-[#8C867A] dark:text-[#A6A295] mt-0.5 block">
-                  Equilibrium & Organic
+                  {t('curriculum.chemSub')}
                 </span>
               </div>
             </div>
@@ -191,10 +191,10 @@ export const JuniorAndHscSection: React.FC<JuniorAndHscSectionProps> = ({
               />
               <div className="p-3.5 sm:p-4 bg-[#F5F2ED] dark:bg-[#20201A] text-center border-t border-[#E8E4D9] dark:border-[#313128]">
                 <span className="text-xs font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] block">
-                  HSC Biology
+                  {t('curriculum.bioTitle')}
                 </span>
                 <span className="text-[10px] sm:text-[11px] text-[#8C867A] dark:text-[#A6A295] mt-0.5 block">
-                  Genetics & Disease
+                  {t('curriculum.bioSub')}
                 </span>
               </div>
             </div>

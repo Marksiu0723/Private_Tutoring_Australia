@@ -40,7 +40,7 @@ export const HowItWorks: React.FC = () => {
             {t('how.title')}
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight mt-4">
-            Simple, Transparent Scheduling
+            {t('how.transparentHeading')}
           </h2>
           <p className="text-base sm:text-lg text-[#6B6658] dark:text-[#A6A295] mt-3.5 leading-relaxed font-light">
             {t('how.subtitle')}
@@ -75,7 +75,7 @@ export const HowItWorks: React.FC = () => {
                 </div>
 
                 <div className="mt-6 sm:mt-8 pt-4 border-t border-[#E8E4D9] dark:border-[#313128] flex items-center text-[10px] uppercase tracking-widest font-semibold text-[#8C867A] dark:text-[#A6A295]">
-                  <span>Step {idx + 1} of 4</span>
+                  <span>{t('how.stepIndicator').replace('{n}', String(idx + 1))}</span>
                 </div>
               </div>
             );

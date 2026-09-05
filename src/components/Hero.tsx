@@ -113,15 +113,15 @@ export const Hero: React.FC<HeroProps> = ({ onOpenBooking, onOpenServices, onExp
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-[#2D2C27] dark:text-[#EDEAE1] truncate">
-                        NSW Science Syllabus
+                        {t('hero.overlayTitle')}
                       </h4>
                       <p className="text-[11px] sm:text-xs text-[#8C867A] dark:text-[#A6A295] font-medium truncate">
-                        Stage 4, 5 & Stage 6 (HSC)
+                        {t('hero.overlaySubtitle')}
                       </p>
                     </div>
                   </div>
                   <span className="text-[10px] uppercase tracking-widest font-semibold px-2.5 sm:px-3 py-1 bg-[#E8E4D9] dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] rounded-full shrink-0">
-                    7 Days
+                    {t('hero.operatingDays')}
                   </span>
                 </div>
               </div>

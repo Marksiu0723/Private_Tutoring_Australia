@@ -12,7 +12,7 @@ export const WhySection: React.FC = () => {
         {/* Section Header */}
         <div className="max-w-3xl mb-12 sm:mb-16">
           <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.25em] text-[#5A5A40] dark:text-[#A3B18A] px-4 py-1.5 rounded-full bg-[#E8E4D9] dark:bg-[#2A2A22] border border-[#D1C9BC] dark:border-[#38382E]">
-            Educational Methodology
+            {t('why.methodologyTag')}
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight mt-4">
             {t('why.title')}
@@ -90,10 +90,10 @@ export const WhySection: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-[#171714]/90 via-[#171714]/20 to-transparent" />
               <div className="absolute bottom-5 left-5 right-5 sm:bottom-6 sm:left-6 sm:right-6 text-white">
                 <p className="text-[10px] uppercase tracking-widest font-semibold text-[#E8E4D9] dark:text-[#C6D4AB]">
-                  Tailored Mentorship
+                  {t('why.mentorshipTitle')}
                 </p>
                 <p className="text-xs sm:text-sm font-light mt-1.5 leading-relaxed text-[#FDFCF8]/95">
-                  Personalised pacing ensures students ask the questions they might hesitate to ask in a 30-person classroom.
+                  {t('why.mentorshipDesc')}
                 </p>
               </div>
             </div>

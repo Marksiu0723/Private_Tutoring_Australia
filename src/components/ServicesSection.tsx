@@ -9,7 +9,7 @@ interface ServicesSectionProps {
 }
 
 export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectService }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { activeServices, loading } = useData();
 
   // Helper to format price strictly respecting the NULL rule
@@ -25,7 +25,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
     return (
       <div className="flex items-baseline gap-1.5">
         <span className="text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">${price}</span>
-        <span className="text-xs uppercase tracking-wider font-medium text-[#8C867A] dark:text-[#A6A295]">AUD / session</span>
+        <span className="text-xs uppercase tracking-wider font-medium text-[#8C867A] dark:text-[#A6A295]">{t('services.audPerSession')}</span>
       </div>
     );
   };
@@ -39,7 +39,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
             {t('services.title')}
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight mt-4">
-            Targeted Scientific Instruction
+            {t('services.heading')}
           </h2>
           <p className="text-base sm:text-lg text-[#6B6658] dark:text-[#A6A295] mt-3.5 leading-relaxed font-light">
             {t('services.subtitle')}
@@ -59,6 +59,14 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {activeServices.map((service) => {
               const isJunior = service.name.toLowerCase().includes('junior') || service.name.includes('7');
+
+              const displayName = language === 'zh'
+                ? (isJunior ? t('services.srvJuniorName') : t('services.srvHscName'))
+                : service.name;
+
+              const displayDescription = language === 'zh'
+                ? (isJunior ? t('services.srvJuniorDesc') : t('services.srvHscDesc'))
+                : (service.description || 'Personalised one-to-one science tutoring tailored to the student\'s learning goals.');
 
               return (
                 <div
@@ -84,12 +92,12 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
 
                     {/* Service Name */}
                     <h3 className="text-xl sm:text-2xl lg:text-3xl font-serif text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight group-hover:text-[#5A5A40] dark:group-hover:text-[#A3B18A] transition-colors">
-                      {service.name}
+                      {displayName}
                     </h3>
 
                     {/* Description */}
                     <p className="text-sm sm:text-base text-[#6B6658] dark:text-[#A6A295] mt-3 leading-relaxed min-h-[44px] sm:min-h-[50px] font-light">
-                      {service.description || 'Personalised one-to-one science tutoring tailored to the student\'s learning goals.'}
+                      {displayDescription}
                     </p>
 
                     {/* Curricular Highlights */}
@@ -98,30 +106,30 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
                         <>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>Comprehensive Stage 4 & 5 Core Strands</span>
+                            <span>{t('services.srvJuniorH1')}</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>Working Scientifically & Inquiry Skills</span>
+                            <span>{t('services.srvJuniorH2')}</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>Early Preparation for Stage 6 Science</span>
+                            <span>{t('services.srvJuniorH3')}</span>
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>HSC Chemistry Modules 1–8 Deep Dive</span>
+                            <span>{t('services.srvHscH1')}</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>HSC Biology Modules 1–8 Syllabus Coverage</span>
+                            <span>{t('services.srvHscH2')}</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-xs sm:text-sm text-[#4A4A40] dark:text-[#EDEAE1]">
                             <Check className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
-                            <span>Past Paper Analysis & Extended Response Technique</span>
+                            <span>{t('services.srvHscH3')}</span>
                           </div>
                         </>
                       )}

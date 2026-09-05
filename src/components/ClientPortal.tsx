@@ -25,9 +25,22 @@ interface ClientPortalProps {
 }
 
 export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpenBooking }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, session, signOut } = useAuth();
   const { businessHours, blockedDates, businessSettings, services } = useData();
+
+  const getServiceName = (s?: { name: string; id?: string } | null) => {
+    if (!s) return language === 'zh' ? '中学科学辅导' : 'Science Tutoring';
+    if (language === 'zh') {
+      if (s.id === 'srv-junior-1' || s.name?.toLowerCase().includes('junior') || s.name?.includes('7')) {
+        return t('services.srvJuniorName');
+      }
+      if (s.id === 'srv-hsc-2' || s.name?.toLowerCase().includes('hsc') || s.name?.includes('11')) {
+        return t('services.srvHscName');
+      }
+    }
+    return s.name;
+  };
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled' | 'account'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -179,7 +192,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
   // Confirm Reschedule
   const handleConfirmReschedule = async () => {
     if (!rescheduleModalAppt || !newRescheduleDate || !selectedRescheduleSlot) {
-      setRescheduleError('Please select an available date and time slot.');
+      setRescheduleError(t('portal.errorSelectSlot') || 'Please select an available date and time slot.');
       return;
     }
 
@@ -360,7 +373,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                           <div>
                             <div className="flex items-center justify-between mb-4">
                               <span className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-[#E8E4D9] dark:bg-[#282820] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]">
-                                {service?.name || 'Science Tutoring'}
+                                {getServiceName(service)}
                               </span>
                               <span className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#E8E4D9] dark:border-[#38382E]">
                                 {t('portal.status.confirmed')}
@@ -433,7 +446,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                         >
                           <div>
                             <span className="font-serif font-semibold text-base text-[#2D2C27] dark:text-[#EDEAE1] block">
-                              {service?.name || 'Science Tutoring'}
+                              {getServiceName(service)}
                             </span>
                             <span className="text-xs text-[#8C867A] dark:text-[#A6A295] mt-0.5 block">
                               {appt.appointment_date} • {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
@@ -469,7 +482,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                         >
                           <div>
                             <span className="font-serif font-semibold text-base text-[#8C867A] dark:text-[#9E9A8E] line-through block">
-                              {service?.name || 'Science Tutoring'}
+                              {getServiceName(service)}
                             </span>
                             <span className="text-xs text-[#8C867A] dark:text-[#9E9A8E] mt-0.5 block">
                               {t('portal.originalDate')} {appt.appointment_date} • {formatTime12h(appt.start_time)}
