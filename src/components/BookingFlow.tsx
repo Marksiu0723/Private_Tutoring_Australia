@@ -291,12 +291,12 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   // Form submission handler
   const handleSubmitBooking = async () => {
     if (!allOccurrencesValid) {
-      setSubmitError('Please resolve all schedule conflicts before confirming.');
+      setSubmitError(t('booking.errorResolveConflicts'));
       return;
     }
 
     if (!fullName.trim() || !email.trim() || !phone.trim()) {
-      setSubmitError('Full name, email, and phone number are required.');
+      setSubmitError(t('booking.errorFillRequired'));
       return;
     }
 
@@ -451,10 +451,10 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                  {t('booking.step2')}: Choose Session Package
+                  {t('booking.step2')}: {t('booking.choosePackage')}
                 </h3>
                 <p className="text-xs text-[#8C867A] dark:text-[#A6A295] mt-1">
-                  Single Session Tutoring • Choose 1 lesson or book 10 sessions with recurring scheduling options.
+                  {t('booking.step2Subtitle')}
                 </p>
               </div>
 
@@ -490,7 +490,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
                         {isTenPack && (
                           <span className="inline-block mt-1 text-[9px] uppercase font-bold tracking-widest text-[#5A5A40] dark:text-[#A3B18A]">
-                            Recurring in All Available Dates
+                            {t('booking.recurringAllDates')}
                           </span>
                         )}
 
@@ -508,7 +508,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                           </span>
                         )}
                         <span className="text-[10px] text-[#5A5A40] dark:text-[#C6D4AB]">
-                          Flexible Dates
+                          {t('booking.flexibleDates')}
                         </span>
                       </div>
                     </div>
@@ -520,7 +520,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="p-3.5 rounded-2xl bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#2E2E24] text-xs text-[#6B6658] dark:text-[#A6A295] flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
                 <span>
-                  <strong>Client Portal Guarantee:</strong> You can change dates and times for any booked session anytime in your Client Portal.
+                  <strong>{t('booking.portalGuarantee')}</strong> {t('booking.portalGuaranteeDesc')}
                 </span>
               </div>
             </div>
@@ -530,7 +530,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           {step === 3 && (
             <div className="space-y-4">
               <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                {t('booking.step3')}: Choose Learning Cadence
+                {t('booking.step3')}: {t('booking.step3Cadence')}
               </h3>
 
               <div className="space-y-3">
@@ -566,10 +566,10 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] text-base">
-                          {t('booking.recurrence.weekly')} (Every 7 Days)
+                          {t('booking.recurrence.weekly')} ({t('booking.every7Days')})
                         </span>
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#2A2A22] px-2.5 py-0.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E]">
-                          Recommended
+                          {t('booking.recommendedBadge')}
                         </span>
                       </div>
                       <span className="text-xs text-[#6B6658] dark:text-[#A6A295] font-light block mt-1">
@@ -586,7 +586,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                       }`}
                     >
                       <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] block text-base">
-                        {t('booking.recurrence.fortnightly')} (Every 14 Days)
+                        {t('booking.recurrence.fortnightly')} ({t('booking.every14Days')})
                       </span>
                       <span className="text-xs text-[#6B6658] dark:text-[#A6A295] font-light block mt-1">
                         {t('booking.recurrence.fortnightly.desc')}
@@ -620,16 +620,16 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                    {t('booking.step4')}: Schedule Your Lesson Times
+                    {t('booking.step4')}: {t('booking.step4Times')}
                   </h3>
                   <p className="text-xs text-[#8C867A] dark:text-[#A6A295]">
-                    Operating 7 Days • 9:00 AM – 9:00 PM
+                    {t('booking.operatingNotice')}
                   </p>
                 </div>
 
                 {targetSessions > 1 && (
                   <span className="text-[10px] uppercase tracking-widest font-semibold px-3 py-1 bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E] rounded-full self-start sm:self-auto">
-                    {occurrences.filter((o) => o.isValid && o.startTimeStr).length} of {targetSessions} Scheduled
+                    {occurrences.filter((o) => o.isValid && o.startTimeStr).length} {t('booking.of')} {targetSessions} {t('booking.scheduledCount')}
                   </span>
                 )}
               </div>
@@ -649,7 +649,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                           : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
                       }`}
                     >
-                      <span>Lesson {idx + 1}</span>
+                      <span>{t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}</span>
                       {occ.isValid ? (
                         <Check className="w-3 h-3 text-current" />
                       ) : (
@@ -664,11 +664,11 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="p-5 sm:p-6 rounded-[26px] bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#2E2E24] space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#5A5A40] dark:text-[#C6D4AB]">
-                    Configuring Lesson {activeOccurrenceIdx + 1} of {targetSessions}
+                    {t('booking.configuringLesson').replace('{cur}', String(activeOccurrenceIdx + 1)).replace('{total}', String(targetSessions))}
                   </span>
                   {currentOccurrence && (
                     <span className="text-xs font-medium text-[#8C867A] dark:text-[#A6A295]">
-                      Duration: {selectedService.duration_minutes} min
+                      {t('booking.duration')} {selectedService.duration_minutes} min
                     </span>
                   )}
                 </div>
@@ -735,10 +735,10 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
-                    All Scheduled Sessions
+                    {t('booking.allScheduledSessions')}
                   </span>
                   <span className="text-[10px] text-[#5A5A40] dark:text-[#C6D4AB] font-semibold">
-                    Change dates anytime in Client Portal
+                    {t('booking.changePortalTip')}
                   </span>
                 </div>
                 <div className="space-y-1.5 text-xs">
@@ -748,15 +748,15 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                       onClick={() => setActiveOccurrenceIdx(idx)}
                       className={`p-3 rounded-2xl flex items-center justify-between cursor-pointer border transition-colors ${
                         activeOccurrenceIdx === idx
-                          ? 'bg-[#E8E4D9]/60 dark:bg-[#2A2A22] font-semibold border-[#5A5A40] dark:border-[#A3B18A]'
+                           ? 'bg-[#E8E4D9]/60 dark:bg-[#2A2A22] font-semibold border-[#5A5A40] dark:border-[#A3B18A]'
                           : 'bg-[#F5F2ED] dark:bg-[#20201A] text-[#4A4A40] dark:text-[#EDEAE1] border-[#E8E4D9] dark:border-[#2E2E24]'
                       }`}
                     >
                       <span>
-                        Lesson {idx + 1}: {occ.dateStr}
+                        {t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}: {occ.dateStr}
                       </span>
                       <span className={occ.isValid ? 'text-[#5A5A40] dark:text-[#C6D4AB] font-semibold' : 'text-red-600 dark:text-red-400 font-bold'}>
-                        {occ.startTimeStr ? formatTime12h(occ.startTimeStr) : 'Pick slot'}
+                        {occ.startTimeStr ? formatTime12h(occ.startTimeStr) : t('booking.pickSlot')}
                       </span>
                     </div>
                   ))}
@@ -769,7 +769,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           {step === 5 && (
             <div className="space-y-4">
               <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                {t('booking.step5')}: Student & Contact Information
+                {t('booking.step5')}: {t('booking.step5Contact')}
               </h3>
 
               <div className="space-y-4">
@@ -851,36 +851,36 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           {step === 6 && (
             <div className="space-y-4">
               <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                {t('booking.step6')}: Review Your Tutoring Booking
+                {t('booking.step6')}: {t('booking.step6Review')}
               </h3>
 
               <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[26px] p-5 sm:p-6 border border-[#E8E4D9] dark:border-[#2E2E24] space-y-4 text-sm">
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Tutoring Service:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewService')}</span>
                   <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{selectedService.name}</span>
                 </div>
 
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Package:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewPackage')}</span>
                   <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
                     {t(selectedPackage.titleKey)} ({selectedPackage.sessions} sessions)
                   </span>
                 </div>
 
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Cadence:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewCadence')}</span>
                   <span className="font-semibold capitalize text-[#2D2C27] dark:text-[#EDEAE1]">{recurrence}</span>
                 </div>
 
                 <div>
                   <span className="text-[#8C867A] dark:text-[#A6A295] block mb-1.5 font-semibold text-xs uppercase tracking-wider">
-                    Scheduled Lessons:
+                    {t('booking.reviewScheduledLessons')}
                   </span>
                   <div className="bg-white dark:bg-[#23231D] rounded-[18px] p-4 border border-[#E8E4D9] dark:border-[#2E2E24] space-y-1.5 text-xs">
                     {occurrences.map((o, idx) => (
                       <div key={idx} className="flex justify-between py-0.5">
                         <span className="font-medium text-[#4A4A40] dark:text-[#EDEAE1]">
-                          Lesson {idx + 1}: {o.dateStr}
+                          {t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}: {o.dateStr}
                         </span>
                         <span className="text-[#5A5A40] dark:text-[#C6D4AB] font-semibold">
                           {formatTime12h(o.startTimeStr)} – {formatTime12h(o.endTimeStr)}
@@ -891,33 +891,33 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                 </div>
 
                 <div className="flex justify-between pt-2 border-t border-[#E8E4D9] dark:border-[#2E2E24]">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Student Contact:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewStudentContact')}</span>
                   <span className="font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
                     {fullName} ({phone})
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Notification Email:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewNotificationEmail')}</span>
                   <span className="font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{email}</span>
                 </div>
 
                 <div className="flex justify-between pt-3 border-t border-[#E8E4D9] dark:border-[#2E2E24] items-center">
-                  <span className="text-[#8C867A] dark:text-[#A6A295] font-semibold">Pricing:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295] font-semibold">{t('booking.reviewPricing')}</span>
                   {selectedService.price === null ? (
                     <span className="text-xs font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#2A2A22] px-3 py-1 rounded-full border border-[#D1C9BC] dark:border-[#38382E]">
                       {t('services.pricePending')}
                     </span>
                   ) : (
                     <span className="text-lg font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
-                      ${selectedService.price * selectedPackage.sessions} AUD estimated
+                      ${selectedService.price * selectedPackage.sessions} {t('booking.reviewEstimated')}
                     </span>
                   )}
                 </div>
 
                 <div className="pt-2 text-[11px] text-[#5A5A40] dark:text-[#C6D4AB] flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  <span>You can change or reschedule any of these lesson dates in your Client Portal anytime.</span>
+                  <span>{t('booking.reviewChangeAnytime')}</span>
                 </div>
               </div>
 
@@ -947,24 +947,24 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
               <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[26px] p-6 border border-[#E8E4D9] dark:border-[#2E2E24] text-left text-xs space-y-2.5 max-w-md mx-auto">
                 <div className="flex justify-between">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Subject:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.successSubject')}</span>
                   <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{confirmedData.service.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Student:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.successStudent')}</span>
                   <span className="font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{confirmedData.fullName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#8C867A] dark:text-[#A6A295]">Email:</span>
+                  <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.successEmail')}</span>
                   <span className="font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">{confirmedData.email}</span>
                 </div>
                 <div className="pt-2.5 border-t border-[#E8E4D9] dark:border-[#2E2E24]">
                   <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold mb-1 uppercase tracking-wider text-[10px]">
-                    Confirmed Sessions:
+                    {t('booking.successConfirmedSessions')}
                   </span>
                   {confirmedData.occurrences.map((occ: any, i: number) => (
                     <div key={i} className="flex justify-between text-[#4A4A40] dark:text-[#EDEAE1] py-0.5">
-                      <span>Lesson {i + 1}: {occ.dateStr}</span>
+                      <span>{t('booking.lessonLabel')} {i + 1} {t('booking.lessonSuffix')}: {occ.dateStr}</span>
                       <span className="font-semibold text-[#5A5A40] dark:text-[#C6D4AB]">
                         {formatTime12h(occ.startTimeStr)}
                       </span>
@@ -1021,11 +1021,11 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                 id="booking-continue-btn"
                 onClick={() => {
                   if (step === 4 && !allOccurrencesValid) {
-                    setSubmitError('Please resolve all schedule conflicts before proceeding.');
+                    setSubmitError(t('booking.errorResolveConflicts'));
                     return;
                   }
                   if (step === 5 && (!fullName.trim() || !email.trim() || !phone.trim())) {
-                    setSubmitError('Please fill in required student name, email, and phone number.');
+                    setSubmitError(t('booking.errorFillRequired'));
                     return;
                   }
                   setSubmitError(null);

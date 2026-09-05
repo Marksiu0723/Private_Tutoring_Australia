@@ -116,20 +116,23 @@ interface DataContextType {
   businessSettings: BusinessSettings;
   adminAppointments: Appointment[];
   loading: boolean;
+  adminAppointmentsLoading: boolean;
   refreshData: () => Promise<void>;
   // Public booking insert (MUST NOT use .select() or manual id/created_at)
   createAppointmentsPublic: (
     items: Omit<Appointment, 'id' | 'created_at' | 'status'>[]
   ) => Promise<{ success: boolean; error?: string }>;
   // Admin methods
-  addService: (data: Omit<Service, 'id' | 'created_at'>) => Promise<boolean>;
-  updateService: (id: string, data: Partial<Service>) => Promise<boolean>;
-  updateBusinessHour: (idOrWeekday: string | number, data: Partial<BusinessHour>) => Promise<boolean>;
-  addBlockedDate: (blocked_date: string, reason: string | null) => Promise<boolean>;
-  removeBlockedDate: (id: string) => Promise<boolean>;
-  updateBusinessSettings: (data: Partial<BusinessSettings>) => Promise<boolean>;
-  updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<boolean>;
-  addAdminAppointment: (data: Omit<Appointment, 'id' | 'created_at'>) => Promise<boolean>;
+  addService: (data: Omit<Service, 'id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  updateService: (id: string, data: Partial<Service>) => Promise<{ success: boolean; error?: string }>;
+  deleteService: (id: string) => Promise<{ success: boolean; error?: string }>;
+  updateBusinessHour: (idOrWeekday: string | number, data: Partial<BusinessHour>) => Promise<{ success: boolean; error?: string }>;
+  saveAllBusinessHours: (hours: BusinessHour[]) => Promise<{ success: boolean; error?: string }>;
+  addBlockedDate: (blocked_date: string, reason: string | null) => Promise<{ success: boolean; error?: string }>;
+  removeBlockedDate: (id: string, blocked_date?: string) => Promise<{ success: boolean; error?: string }>;
+  updateBusinessSettings: (data: Partial<BusinessSettings>) => Promise<{ success: boolean; error?: string }>;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<{ success: boolean; error?: string }>;
+  addAdminAppointment: (data: Omit<Appointment, 'id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
   fetchAdminAppointments: () => Promise<void>;
 }
 
@@ -142,6 +145,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings>(DEFAULT_SETTINGS);
   const [adminAppointments, setAdminAppointments] = useState<Appointment[]>(INITIAL_DEMO_APPOINTMENTS);
   const [loading, setLoading] = useState<boolean>(true);
+  const [adminAppointmentsLoading, setAdminAppointmentsLoading] = useState<boolean>(false);
+  const [settingsTableName, setSettingsTableName] = useState<string>('business_settings');
+  const [settingsSchemaFields, setSettingsSchemaFields] = useState<Set<string>>(new Set());
 
   const loadPublicData = useCallback(async () => {
     if (!isSupabaseConfigured) {
@@ -163,7 +169,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Fetch business hours
       const { data: bhData, error: bhError } = await supabase
         .from('business_hours')
-        .select('*');
+        .select('*')
+        .order('weekday', { ascending: true });
 
       if (!bhError && bhData && bhData.length > 0) {
         setBusinessHours(bhData);
@@ -179,15 +186,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setBlockedDates(bdData);
       }
 
-      // 4. Fetch business settings
-      const { data: bsData, error: bsError } = await supabase
-        .from('business_settings')
+      // 4. Fetch settings - dynamically check 'settings' or 'business_settings'
+      let loadedSettings: any = null;
+      let matchedTable = 'business_settings';
+
+      // First try 'settings'
+      const { data: sData, error: sError } = await supabase
+        .from('settings')
         .select('*')
         .limit(1)
         .maybeSingle();
 
-      if (!bsError && bsData) {
-        setBusinessSettings(bsData);
+      if (!sError && sData) {
+        loadedSettings = sData;
+        matchedTable = 'settings';
+      } else {
+        // Next try 'business_settings'
+        const { data: bsData, error: bsError } = await supabase
+          .from('business_settings')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+
+        if (!bsError && bsData) {
+          loadedSettings = bsData;
+          matchedTable = 'business_settings';
+        }
+      }
+
+      if (loadedSettings) {
+        setSettingsTableName(matchedTable);
+        const keys = new Set(Object.keys(loadedSettings));
+        setSettingsSchemaFields(keys);
+
+        const nameVal = loadedSettings.name ?? loadedSettings.business_name ?? 'Shanon Lee Tutoring';
+        const emailVal = loadedSettings.email ?? loadedSettings.business_email ?? 'shanon.lcm@gmail.com';
+        const phoneVal = loadedSettings.phone ?? loadedSettings.business_phone ?? null;
+        const addrVal = loadedSettings.address ?? loadedSettings.business_address ?? null;
+        const intervalVal = Number(loadedSettings.slot_interval_minutes) || 30;
+        const noticeVal = Number(loadedSettings.booking_notice_hours) || 12;
+
+        setBusinessSettings({
+          id: loadedSettings.id,
+          name: nameVal,
+          business_name: nameVal,
+          email: emailVal,
+          business_email: emailVal,
+          phone: phoneVal,
+          business_phone: phoneVal,
+          address: addrVal,
+          business_address: addrVal,
+          slot_interval_minutes: intervalVal,
+          booking_notice_hours: noticeVal,
+          created_at: loadedSettings.created_at,
+        });
       }
     } catch (err) {
       console.warn('Data loading note:', err);
@@ -198,15 +250,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchAdminAppointments = useCallback(async () => {
     if (!isSupabaseConfigured) return;
+    setAdminAppointmentsLoading(true);
     try {
+      // First try joined query
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
         .order('appointment_date', { ascending: true })
         .order('start_time', { ascending: true });
 
-      if (!error && data) {
-        // Decorate with service
+      if (error) {
+        console.error('Error fetching admin appointments:', error.message);
+      } else if (data) {
+        // Decorate with service relation
         const enriched = data.map((a: Appointment) => ({
           ...a,
           service: services.find((s) => s.id === a.service_id),
@@ -214,7 +270,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAdminAppointments(enriched);
       }
     } catch (err) {
-      console.error('Error fetching admin appointments:', err);
+      console.error('Error in fetchAdminAppointments:', err);
+    } finally {
+      setAdminAppointmentsLoading(false);
     }
   }, [services]);
 
@@ -272,24 +330,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ADMIN OPERATIONS
-  const addService = async (data: Omit<Service, 'id' | 'created_at'>): Promise<boolean> => {
+  const addService = async (
+    data: Omit<Service, 'id' | 'created_at'>
+  ): Promise<{ success: boolean; error?: string }> => {
     const newServicePayload = {
       name: data.name.trim(),
       description: data.description ? data.description.trim() : null,
       duration_minutes: Number(data.duration_minutes) || 60,
-      price: data.price === null || data.price === undefined || isNaN(Number(data.price)) ? null : Number(data.price),
+      price:
+        data.price === null || data.price === undefined || isNaN(Number(data.price))
+          ? null
+          : Number(data.price),
       is_active: data.is_active ?? true,
     };
 
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.from('services').insert([newServicePayload]);
-        if (error) throw error;
+        if (error) {
+          console.error('Error adding service in Supabase:', error);
+          return { success: false, error: error.message };
+        }
         await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error adding service:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception adding service:', err);
+        return { success: false, error: err.message || 'Failed to add service' };
       }
     }
 
@@ -299,81 +365,168 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       created_at: new Date().toISOString(),
     };
     setServices((prev) => [...prev, localService]);
-    return true;
+    return { success: true };
   };
 
-  const updateService = async (id: string, data: Partial<Service>): Promise<boolean> => {
+  const updateService = async (
+    id: string,
+    data: Partial<Service>
+  ): Promise<{ success: boolean; error?: string }> => {
     const updatePayload: any = {};
     if (data.name !== undefined) updatePayload.name = data.name.trim();
-    if (data.description !== undefined) updatePayload.description = data.description ? data.description.trim() : null;
-    if (data.duration_minutes !== undefined) updatePayload.duration_minutes = Number(data.duration_minutes);
+    if (data.description !== undefined)
+      updatePayload.description = data.description ? data.description.trim() : null;
+    if (data.duration_minutes !== undefined)
+      updatePayload.duration_minutes = Number(data.duration_minutes);
     if ('price' in data) {
-      updatePayload.price = data.price === null || data.price === undefined || isNaN(Number(data.price)) ? null : Number(data.price);
+      updatePayload.price =
+        data.price === null || data.price === undefined || isNaN(Number(data.price))
+          ? null
+          : Number(data.price);
     }
     if (data.is_active !== undefined) updatePayload.is_active = data.is_active;
 
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.from('services').update(updatePayload).eq('id', id);
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating service in Supabase:', error);
+          return { success: false, error: error.message };
+        }
         await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error updating service:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception updating service:', err);
+        return { success: false, error: err.message || 'Failed to update service' };
       }
     }
 
     setServices((prev) =>
       prev.map((s) => (s.id === id ? { ...s, ...updatePayload } : s))
     );
-    return true;
+    return { success: true };
+  };
+
+  const deleteService = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('services').delete().eq('id', id);
+        if (error) {
+          console.error('Error deleting service in Supabase:', error);
+          return { success: false, error: error.message };
+        }
+        await loadPublicData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception deleting service:', err);
+        return { success: false, error: err.message || 'Failed to delete service' };
+      }
+    }
+
+    setServices((prev) => prev.filter((s) => s.id !== id));
+    return { success: true };
   };
 
   const updateBusinessHour = async (
     idOrWeekday: string | number,
     data: Partial<BusinessHour>
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; error?: string }> => {
+    const payload: any = {};
+    if (data.is_open !== undefined) payload.is_open = Boolean(data.is_open);
+    if (data.start_time !== undefined) payload.start_time = data.start_time;
+    if (data.end_time !== undefined) payload.end_time = data.end_time;
+
     if (isSupabaseConfigured) {
       try {
-        // match either by id or weekday
-        const query = typeof idOrWeekday === 'string' && idOrWeekday.startsWith('bh-')
-          ? supabase.from('business_hours').update(data).eq('id', idOrWeekday)
-          : supabase.from('business_hours').update(data).eq('weekday', idOrWeekday);
+        // Try matching by id if uuid/pk string, otherwise by weekday
+        let query;
+        if (typeof idOrWeekday === 'string' && !idOrWeekday.startsWith('bh-') && isNaN(Number(idOrWeekday))) {
+          query = supabase.from('business_hours').update(payload).eq('id', idOrWeekday);
+        } else {
+          const weekdayNum = typeof idOrWeekday === 'number' ? idOrWeekday : parseInt(idOrWeekday, 10);
+          query = supabase.from('business_hours').update(payload).eq('weekday', isNaN(weekdayNum) ? idOrWeekday : weekdayNum);
+        }
 
         const { error } = await query;
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating business hours in Supabase:', error);
+          return { success: false, error: error.message };
+        }
         await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error updating business hours:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception updating business hours:', err);
+        return { success: false, error: err.message || 'Failed to update business hours' };
       }
     }
 
     setBusinessHours((prev) =>
       prev.map((h) => {
-        if (h.id === idOrWeekday || h.weekday === idOrWeekday) {
-          return { ...h, ...data };
+        if (h.id === idOrWeekday || h.weekday === idOrWeekday || String(h.weekday) === String(idOrWeekday)) {
+          return { ...h, ...payload };
         }
         return h;
       })
     );
-    return true;
+    return { success: true };
   };
 
-  const addBlockedDate = async (blocked_date: string, reason: string | null): Promise<boolean> => {
+  const saveAllBusinessHours = async (
+    hours: BusinessHour[]
+  ): Promise<{ success: boolean; error?: string }> => {
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('blocked_dates').insert([
-          { blocked_date, reason: reason ? reason.trim() : null },
-        ]);
-        if (error) throw error;
+        // Update each weekday row
+        for (const h of hours) {
+          const payload = {
+            is_open: h.is_open,
+            start_time: h.start_time,
+            end_time: h.end_time,
+          };
+          const weekdayNum = typeof h.weekday === 'number' ? h.weekday : parseInt(String(h.weekday), 10);
+          const { error } = await supabase
+            .from('business_hours')
+            .update(payload)
+            .eq('weekday', isNaN(weekdayNum) ? h.weekday : weekdayNum);
+
+          if (error) {
+            console.error(`Error saving weekday ${h.weekday}:`, error);
+            return { success: false, error: error.message };
+          }
+        }
         await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error adding blocked date:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception saving all business hours:', err);
+        return { success: false, error: err.message || 'Failed to save business hours' };
+      }
+    }
+
+    setBusinessHours(hours);
+    return { success: true };
+  };
+
+  const addBlockedDate = async (
+    blocked_date: string,
+    reason: string | null
+  ): Promise<{ success: boolean; error?: string }> => {
+    const payload = {
+      blocked_date,
+      reason: reason ? reason.trim() : null,
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('blocked_dates').insert([payload]);
+        if (error) {
+          console.error('Error adding blocked date in Supabase:', error);
+          return { success: false, error: error.message };
+        }
+        await loadPublicData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception adding blocked date:', err);
+        return { success: false, error: err.message || 'Failed to add blocked date' };
       }
     }
 
@@ -384,111 +537,202 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       created_at: new Date().toISOString(),
     };
     setBlockedDates((prev) => [...prev, localBd]);
-    return true;
+    return { success: true };
   };
 
-  const removeBlockedDate = async (id: string): Promise<boolean> => {
+  const removeBlockedDate = async (
+    id: string,
+    blocked_date?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('blocked_dates').delete().eq('id', id);
-        if (error) throw error;
+        let query = supabase.from('blocked_dates').delete();
+        // If id is a real UUID (not local simulated id)
+        if (id && !id.startsWith('bd-')) {
+          query = query.eq('id', id);
+        } else if (blocked_date) {
+          query = query.eq('blocked_date', blocked_date);
+        } else {
+          query = query.eq('id', id);
+        }
+
+        const { error } = await query;
+        if (error) {
+          console.error('Error removing blocked date in Supabase:', error);
+          return { success: false, error: error.message };
+        }
         await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error removing blocked date:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception removing blocked date:', err);
+        return { success: false, error: err.message || 'Failed to remove blocked date' };
       }
     }
 
-    setBlockedDates((prev) => prev.filter((b) => b.id !== id));
-    return true;
+    setBlockedDates((prev) =>
+      prev.filter((b) => b.id !== id && b.blocked_date !== blocked_date)
+    );
+    return { success: true };
   };
 
-  const updateBusinessSettings = async (data: Partial<BusinessSettings>): Promise<boolean> => {
-    const payload: any = { ...data };
-    // Maintain NULL rules
-    if ('business_phone' in data && !data.business_phone) payload.business_phone = null;
-    if ('business_address' in data && !data.business_address) payload.business_address = null;
+  const updateBusinessSettings = async (
+    data: Partial<BusinessSettings>
+  ): Promise<{ success: boolean; error?: string }> => {
+    const targetTable = settingsTableName || 'business_settings';
+    const fields = settingsSchemaFields;
 
-    if (isSupabaseConfigured) {
-      try {
-        const { error } = await supabase
-          .from('business_settings')
-          .update(payload)
-          .eq('id', businessSettings.id);
+    const payload: any = {};
 
-        if (error) throw error;
-        await loadPublicData();
-        return true;
-      } catch (err) {
-        console.error('Error updating business settings:', err);
-        return false;
+    // Map fields matching exact schema keys
+    if (data.slot_interval_minutes !== undefined) {
+      payload.slot_interval_minutes = Number(data.slot_interval_minutes);
+    }
+    if (data.booking_notice_hours !== undefined) {
+      payload.booking_notice_hours = Number(data.booking_notice_hours);
+    }
+
+    const nameValue = (data.name ?? data.business_name ?? '').trim();
+    if (nameValue) {
+      if (fields.has('name')) payload.name = nameValue;
+      if (fields.has('business_name')) payload.business_name = nameValue;
+      if (!fields.has('name') && !fields.has('business_name')) {
+        // Fallback default
+        if (targetTable === 'settings') payload.name = nameValue;
+        else payload.business_name = nameValue;
       }
     }
 
-    setBusinessSettings((prev) => ({ ...prev, ...payload }));
-    return true;
+    const emailValue = (data.email ?? data.business_email ?? '').trim();
+    if (emailValue) {
+      if (fields.has('email')) payload.email = emailValue;
+      if (fields.has('business_email')) payload.business_email = emailValue;
+      if (!fields.has('email') && !fields.has('business_email')) {
+        if (targetTable === 'settings') payload.email = emailValue;
+        else payload.business_email = emailValue;
+      }
+    }
+
+    const phoneValue = (data.phone ?? data.business_phone ?? '').trim() || null;
+    if (fields.has('phone')) payload.phone = phoneValue;
+    if (fields.has('business_phone')) payload.business_phone = phoneValue;
+    if (!fields.has('phone') && !fields.has('business_phone')) {
+      if (targetTable === 'settings') payload.phone = phoneValue;
+      else payload.business_phone = phoneValue;
+    }
+
+    const addressValue = (data.address ?? data.business_address ?? '').trim() || null;
+    if (fields.has('address')) payload.address = addressValue;
+    if (fields.has('business_address')) payload.business_address = addressValue;
+    if (!fields.has('address') && !fields.has('business_address')) {
+      if (targetTable === 'settings') payload.address = addressValue;
+      else payload.business_address = addressValue;
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        let query;
+        if (businessSettings.id && !businessSettings.id.startsWith('bs-')) {
+          query = supabase.from(targetTable).update(payload).eq('id', businessSettings.id);
+        } else {
+          // If no specific single ID, update the row in settings table
+          query = supabase.from(targetTable).update(payload).neq('slot_interval_minutes', -999);
+        }
+
+        const { error } = await query;
+        if (error) {
+          console.error('Error updating settings in Supabase:', error);
+          return { success: false, error: error.message };
+        }
+        await loadPublicData();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception updating business settings:', err);
+        return { success: false, error: err.message || 'Failed to update settings' };
+      }
+    }
+
+    setBusinessSettings((prev) => ({
+      ...prev,
+      ...data,
+      name: nameValue || prev.name,
+      business_name: nameValue || prev.business_name,
+      email: emailValue || prev.email,
+      business_email: emailValue || prev.business_email,
+      phone: phoneValue,
+      business_phone: phoneValue,
+      address: addressValue,
+      business_address: addressValue,
+    }));
+    return { success: true };
   };
 
   const updateAppointmentStatus = async (
     id: string,
     status: AppointmentStatus
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase
           .from('appointments')
           .update({ status })
           .eq('id', id);
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating appointment status:', error);
+          return { success: false, error: error.message };
+        }
         await fetchAdminAppointments();
-        return true;
-      } catch (err) {
-        console.error('Error updating appointment status:', err);
-        return false;
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception updating appointment status:', err);
+        return { success: false, error: err.message || 'Failed to update appointment status' };
       }
     }
 
     setAdminAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
     );
-    return true;
+    return { success: true };
   };
 
   const addAdminAppointment = async (
     data: Omit<Appointment, 'id' | 'created_at'>
-  ): Promise<boolean> => {
-    const newId = `admin-appt-${Date.now()}`;
-    const newAppt: Appointment = {
-      ...data,
-      id: newId,
-      created_at: new Date().toISOString(),
-      service: services.find((s) => s.id === data.service_id),
+  ): Promise<{ success: boolean; error?: string }> => {
+    const payload = {
+      full_name: data.full_name.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone: data.phone.trim(),
+      service_id: data.service_id,
+      appointment_date: data.appointment_date,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      notes: data.notes ? data.notes.trim() : null,
+      status: data.status || 'confirmed',
     };
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('appointments').insert({
-          full_name: data.full_name,
-          email: data.email,
-          phone: data.phone,
-          service_id: data.service_id,
-          appointment_date: data.appointment_date,
-          start_time: data.start_time,
-          end_time: data.end_time,
-          notes: data.notes || null,
-          status: data.status || 'confirmed',
-        });
-        if (error) throw error;
+        const { error } = await supabase.from('appointments').insert([payload]);
+        if (error) {
+          console.error('Error inserting admin appointment:', error);
+          return { success: false, error: error.message };
+        }
         await fetchAdminAppointments();
-        return true;
-      } catch (err) {
-        console.error('Error inserting admin appointment:', err);
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception inserting admin appointment:', err);
+        return { success: false, error: err.message || 'Failed to schedule appointment' };
       }
     }
 
+    const newId = `admin-appt-${Date.now()}`;
+    const newAppt: Appointment = {
+      ...payload,
+      id: newId,
+      created_at: new Date().toISOString(),
+      service: services.find((s) => s.id === data.service_id),
+    };
     setAdminAppointments((prev) => [newAppt, ...prev]);
-    return true;
+    return { success: true };
   };
 
   const activeServices = services.filter((s) => s.is_active);
@@ -503,11 +747,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         businessSettings,
         adminAppointments,
         loading,
+        adminAppointmentsLoading,
         refreshData: loadPublicData,
         createAppointmentsPublic,
         addService,
         updateService,
+        deleteService,
         updateBusinessHour,
+        saveAllBusinessHours,
         addBlockedDate,
         removeBlockedDate,
         updateBusinessSettings,

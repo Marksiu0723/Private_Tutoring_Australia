@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme, ThemeMode } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Sun, Moon, Laptop, Check } from 'lucide-react';
 
 interface ThemeToggleProps {
-  variant?: 'compact' | 'segmented' | 'dropdown';
+  variant?: 'compact' | 'segmented' | 'dropdown' | 'topbar';
   className?: string;
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', className = '' }) => {
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { t } = useLanguage();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,6 +26,89 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
+
+  // Topbar Variant (exact 24px/h-6 icon button tailored for utility header)
+  if (variant === 'topbar') {
+    return (
+      <div className={`relative inline-block ${className}`} ref={containerRef}>
+        <button
+          id="theme-toggle-topbar-button"
+          type="button"
+          onClick={() => setDropdownOpen((prev) => !prev)}
+          className="h-6 w-6 rounded-full text-[#EDEAE1] bg-white/10 hover:bg-white/20 border border-white/15 transition-all cursor-pointer flex items-center justify-center shrink-0"
+          aria-label={`Current theme: ${theme} (${resolvedTheme}). Click to change.`}
+          title={`Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Moon className="w-3 h-3 text-[#A3B18A]" />
+          ) : (
+            <Sun className="w-3 h-3 text-[#EDEAE1]" />
+          )}
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute right-0 mt-1 w-40 rounded-xl bg-white dark:bg-[#1E1E18] border border-[#E8E4D9] dark:border-[#38382E] shadow-xl py-1 z-50 text-xs animate-in fade-in-50 zoom-in-95">
+            <button
+              type="button"
+              onClick={() => {
+                setTheme('light');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-[#F5F2ED] dark:hover:bg-[#282820] cursor-pointer ${
+                theme === 'light'
+                  ? 'font-semibold text-[#5A5A40] dark:text-[#A3B18A]'
+                  : 'text-[#4A4A40] dark:text-[#EDEAE1]'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Sun className="w-3.5 h-3.5" />
+                <span>{t('theme.light')}</span>
+              </div>
+              {theme === 'light' && <Check className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTheme('dark');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-[#F5F2ED] dark:hover:bg-[#282820] cursor-pointer ${
+                theme === 'dark'
+                  ? 'font-semibold text-[#5A5A40] dark:text-[#A3B18A]'
+                  : 'text-[#4A4A40] dark:text-[#EDEAE1]'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5" />
+                <span>{t('theme.dark')}</span>
+              </div>
+              {theme === 'dark' && <Check className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTheme('system');
+                setDropdownOpen(false);
+              }}
+              className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-[#F5F2ED] dark:hover:bg-[#282820] cursor-pointer ${
+                theme === 'system'
+                  ? 'font-semibold text-[#5A5A40] dark:text-[#A3B18A]'
+                  : 'text-[#4A4A40] dark:text-[#EDEAE1]'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Laptop className="w-3.5 h-3.5" />
+                <span>{t('theme.auto')}</span>
+              </div>
+              {theme === 'system' && <Check className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Segmented Pill Control (great for mobile menus or settings panels)
   if (variant === 'segmented') {
@@ -44,7 +129,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
           title="Light Theme"
         >
           <Sun className="w-3.5 h-3.5" />
-          <span>Light</span>
+          <span>{t('theme.light')}</span>
         </button>
 
         <button
@@ -58,7 +143,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
           title="Dark Theme"
         >
           <Moon className="w-3.5 h-3.5" />
-          <span>Dark</span>
+          <span>{t('theme.dark')}</span>
         </button>
 
         <button
@@ -72,7 +157,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
           title="System Preference"
         >
           <Laptop className="w-3.5 h-3.5" />
-          <span>Auto</span>
+          <span>{t('theme.auto')}</span>
         </button>
       </div>
     );
@@ -99,7 +184,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
       {dropdownOpen && (
         <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white dark:bg-[#1E1E18] border border-[#E8E4D9] dark:border-[#38382E] shadow-xl py-1.5 z-50 text-xs animate-in fade-in-50 zoom-in-95">
           <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#7A7568] border-b border-[#E8E4D9] dark:border-[#2D2D24] mb-1">
-            Theme Preference
+            {t('theme.preference')}
           </div>
 
           <button
@@ -116,7 +201,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
           >
             <div className="flex items-center gap-2">
               <Sun className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>Light</span>
+              <span>{t('theme.light')}</span>
             </div>
             {theme === 'light' && <Check className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />}
           </button>
@@ -135,7 +220,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
           >
             <div className="flex items-center gap-2">
               <Moon className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>Dark</span>
+              <span>{t('theme.dark')}</span>
             </div>
             {theme === 'dark' && <Check className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />}
           </button>
@@ -155,9 +240,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
             <div className="flex items-center gap-2">
               <Laptop className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
               <div className="flex flex-col">
-                <span>System</span>
+                <span>{t('theme.system')}</span>
                 <span className="text-[10px] text-[#8C867A] dark:text-[#888377] font-normal">
-                  Auto ({resolvedTheme})
+                  {t('theme.auto')} ({resolvedTheme})
                 </span>
               </div>
             </div>

@@ -34,12 +34,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMsg(null);
 
     if (!email.trim()) {
-      setErrorMsg('Please enter your email address.');
+      setErrorMsg(t('auth.errorEmail'));
       return;
     }
 
     if (mode !== 'reset' && !password) {
-      setErrorMsg('Please enter your password.');
+      setErrorMsg(t('auth.errorPassword'));
       return;
     }
 
@@ -59,7 +59,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setLoading(false);
       if (res.success) {
         if (res.confirmationRequired) {
-          setSuccessMsg('Account created! Please check your email inbox to confirm your address before signing in.');
+          setSuccessMsg(t('auth.accountCreated'));
         } else {
           onClose();
           if (onSuccess) onSuccess();
@@ -71,7 +71,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const res = await resetPassword(email);
       setLoading(false);
       if (res.success) {
-        setSuccessMsg('Password reset instructions have been dispatched to your email.');
+        setSuccessMsg(t('auth.resetSent'));
       } else {
         setErrorMsg(res.error || 'Password reset request failed.');
       }
@@ -214,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-4 h-4 border-2 border-white dark:border-[#171714] border-t-transparent rounded-full animate-spin" />
-                <span>Processing...</span>
+                <span>{t('auth.processing')}</span>
               </span>
             ) : mode === 'signin' ? (
               t('auth.signInBtn')
@@ -231,7 +231,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={() => setMode('signin')}
               className="w-full text-center text-xs font-semibold text-[#8C867A] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] pt-2 cursor-pointer"
             >
-              Back to Sign In
+              {t('auth.backToSignIn')}
             </button>
           )}
         </form>

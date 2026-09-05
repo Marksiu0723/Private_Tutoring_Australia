@@ -42,11 +42,15 @@ export interface BlockedDate {
 }
 
 export interface BusinessSettings {
-  id: string;
-  business_name: string;
-  business_email: string;
-  business_phone: string | null;
-  business_address: string | null;
+  id?: string;
+  business_name?: string;
+  name?: string;
+  business_email?: string;
+  email?: string;
+  business_phone?: string | null;
+  phone?: string | null;
+  business_address?: string | null;
+  address?: string | null;
   slot_interval_minutes: number;
   booking_notice_hours: number;
   created_at?: string;

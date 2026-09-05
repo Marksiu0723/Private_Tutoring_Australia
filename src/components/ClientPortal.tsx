@@ -263,7 +263,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
               onClick={onBackToSite}
               className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] dark:hover:text-white bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full transition-colors cursor-pointer min-h-[44px]"
             >
-              Return to Website
+              {t('portal.returnToSite')}
             </button>
 
             <button
@@ -328,7 +328,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
         {loading ? (
           <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-12 text-center border border-[#E8E4D9] dark:border-[#313128]">
             <div className="w-8 h-8 border-3 border-[#5A5A40] dark:border-[#A3B18A] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs text-[#8C867A] dark:text-[#A6A295]">Loading your tutoring schedule...</p>
+            <p className="text-xs text-[#8C867A] dark:text-[#A6A295]">{t('portal.loading')}</p>
           </div>
         ) : (
           <div>
@@ -381,7 +381,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                               {appt.notes && (
                                 <div className="mt-3 p-3.5 bg-white dark:bg-[#191914] rounded-2xl border border-[#E8E4D9] dark:border-[#313128] text-xs text-[#6B6658] dark:text-[#A6A295]">
                                   <span className="font-semibold block text-[#2D2C27] dark:text-[#EDEAE1] mb-0.5">
-                                    Notes:
+                                    {t('portal.notesLabel')}
                                   </span>
                                   {appt.notes}
                                 </div>
@@ -472,7 +472,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                               {service?.name || 'Science Tutoring'}
                             </span>
                             <span className="text-xs text-[#8C867A] dark:text-[#9E9A8E] mt-0.5 block">
-                              Original date: {appt.appointment_date} • {formatTime12h(appt.start_time)}
+                              {t('portal.originalDate')} {appt.appointment_date} • {formatTime12h(appt.start_time)}
                             </span>
                           </div>
                           <span className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40">
@@ -495,17 +495,17 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                 <div className="space-y-3.5 text-xs">
                   <div>
                     <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
-                      Registered Email:
+                      {t('portal.registeredEmail')}
                     </span>
                     <span className="text-sm font-medium text-[#2D2C27] dark:text-[#EDEAE1] break-all">{user?.email}</span>
                   </div>
                   <div>
-                    <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">User ID:</span>
+                    <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">{t('portal.userId')}</span>
                     <span className="font-mono text-[#4A4A40] dark:text-[#A6A295] break-all">{user?.id}</span>
                   </div>
                   <div>
                     <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
-                      Account Created:
+                      {t('portal.accountCreated')}
                     </span>
                     <span className="text-[#4A4A40] dark:text-[#EDEAE1]">
                       {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Active'}
@@ -530,10 +530,10 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
               <div className="p-4.5 rounded-[20px] bg-[#F5F2ED] dark:bg-[#24241E] border border-[#E8E4D9] dark:border-[#33332A] text-xs space-y-1.5 text-[#4A4A40] dark:text-[#EDEAE1]">
                 <p>
-                  <strong>Date:</strong> {cancelModalAppt.appointment_date}
+                  <strong>{t('portal.modalDate')}</strong> {cancelModalAppt.appointment_date}
                 </p>
                 <p>
-                  <strong>Time:</strong> {formatTime12h(cancelModalAppt.start_time)} – {formatTime12h(cancelModalAppt.end_time)}
+                  <strong>{t('portal.modalTime')}</strong> {formatTime12h(cancelModalAppt.start_time)} – {formatTime12h(cancelModalAppt.end_time)}
                 </p>
               </div>
 
@@ -555,7 +555,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                   onClick={handleConfirmCancel}
                   className="px-6 py-2.5 text-xs uppercase tracking-widest font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-full shadow-xs cursor-pointer min-h-[44px]"
                 >
-                  {cancelling ? 'Cancelling...' : t('portal.confirmCancelBtn')}
+                  {cancelling ? t('portal.cancelling') : t('portal.confirmCancelBtn')}
                 </button>
               </div>
             </div>
@@ -593,7 +593,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
                   <div>
                     <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-                      New Date
+                      {t('portal.newDate')}
                     </label>
                     <input
                       type="date"
@@ -609,11 +609,11 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
                   <div>
                     <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-                      Available Time Slots
+                      {t('portal.availableSlots')}
                     </label>
                     {rescheduleAvailableSlots.length === 0 ? (
                       <p className="text-xs text-[#8C867A] dark:text-[#A6A295] p-3.5 bg-[#F5F2ED] dark:bg-[#24241E] rounded-2xl border border-[#E8E4D9] dark:border-[#33332A]">
-                        No slots available on this date.
+                        {t('portal.noSlotsOnDate')}
                       </p>
                     ) : (
                       <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
@@ -649,7 +649,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                       onClick={handleConfirmReschedule}
                       className="px-6 py-2.5 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] disabled:opacity-50 rounded-full shadow-xs cursor-pointer min-h-[44px]"
                     >
-                      {rescheduling ? 'Saving...' : 'Confirm New Time'}
+                      {rescheduling ? t('portal.saving') : t('portal.confirmNewTime')}
                     </button>
                   </div>
                 </div>

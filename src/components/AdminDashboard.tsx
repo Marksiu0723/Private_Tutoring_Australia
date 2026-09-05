@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { Service, AppointmentStatus } from '../types';
+import { Service, AppointmentStatus, BusinessHour } from '../types';
 import { formatTime12h } from '../lib/availability';
 import {
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
   Search,
   Plus,
   Edit2,
+  Trash2,
   AlertCircle,
   CheckCircle2,
   Lock,
@@ -24,6 +25,11 @@ import {
   Download,
   UserPlus,
   Sparkles,
+  Loader2,
+  CalendarDays,
+  Check,
+  RotateCcw,
+  Save,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -48,9 +54,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     blockedDates,
     businessSettings,
     adminAppointments,
+    adminAppointmentsLoading,
     addService,
     updateService,
+    deleteService,
     updateBusinessHour,
+    saveAllBusinessHours,
     addBlockedDate,
     removeBlockedDate,
     updateBusinessSettings,
@@ -71,7 +80,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
   // Appointments filtering & search
   const [apptFilter, setApptFilter] = useState<string>('all');
+  const [datePreset, setDatePreset] = useState<'all' | 'today' | 'upcoming' | 'past' | 'custom'>('all');
+  const [dateFilter, setDateFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [updatingApptId, setUpdatingApptId] = useState<string | null>(null);
 
   // Service modal editing
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -81,6 +93,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [serviceFormDuration, setServiceFormDuration] = useState(60);
   const [serviceFormPrice, setServiceFormPrice] = useState<string>(''); // empty string = NULL
   const [serviceFormActive, setServiceFormActive] = useState(true);
+
+  // Service delete modal
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Business Hours local editing state
+  const [localHours, setLocalHours] = useState<BusinessHour[]>([]);
+  const [hoursSaving, setHoursSaving] = useState(false);
+  const [hoursSavedMsg, setHoursSavedMsg] = useState(false);
+  const [rowSavingWeekday, setRowSavingWeekday] = useState<number | null>(null);
+  const [rowSavedWeekday, setRowSavedWeekday] = useState<number | null>(null);
 
   // Schedule Lesson modal state
   const [apptModalOpen, setApptModalOpen] = useState(false);
@@ -98,6 +123,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   // Blocked Date form
   const [newBlockedDate, setNewBlockedDate] = useState('');
   const [newBlockedReason, setNewBlockedReason] = useState('');
+  const [deletingBlockedId, setDeletingBlockedId] = useState<string | null>(null);
 
   // Business Settings form
   const [settingsName, setSettingsName] = useState('');
@@ -106,7 +132,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [settingsAddress, setSettingsAddress] = useState('');
   const [settingsInterval, setSettingsInterval] = useState(30);
   const [settingsNotice, setSettingsNotice] = useState(12);
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   // Fetch appointments on mount
   useEffect(() => {
@@ -364,24 +392,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     );
   }
 
-  // Filtered Appointments
+  // Sync business hours to local state for editing
+  useEffect(() => {
+    const days = [0, 1, 2, 3, 4, 5, 6];
+    const initial: BusinessHour[] = days.map((dayIdx) => {
+      const match = businessHours.find((h) => {
+        if (typeof h.weekday === 'number') return h.weekday === dayIdx;
+        const p = parseInt(String(h.weekday), 10);
+        return !isNaN(p) && p === dayIdx;
+      });
+      return (
+        match || {
+          weekday: dayIdx,
+          is_open: true,
+          start_time: '09:00',
+          end_time: '21:00',
+        }
+      );
+    });
+    setLocalHours(initial);
+  }, [businessHours]);
+
+  // Today's date string (YYYY-MM-DD)
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Calculated Real Supabase Metrics
+  const totalBookings = adminAppointments.length;
+  const todaysAppointments = adminAppointments.filter(
+    (a) => a.appointment_date === todayStr && a.status !== 'cancelled'
+  );
+  const pendingAppointments = adminAppointments.filter((a) => a.status === 'pending');
+  const upcomingConfirmedAppointments = adminAppointments.filter(
+    (a) => a.status === 'confirmed' && a.appointment_date >= todayStr
+  );
+  const completedAppointments = adminAppointments.filter((a) => a.status === 'completed');
+  const activeServicesCount = services.filter((s) => s.is_active).length;
+
+  // Filtered Appointments (by Status, Date preset/picker, and Search Query)
   const filteredAppointments = adminAppointments.filter((a) => {
+    // 1. Status Filter
     if (apptFilter !== 'all' && a.status !== apptFilter) return false;
+
+    // 2. Date Filter
+    if (datePreset === 'today') {
+      if (a.appointment_date !== todayStr) return false;
+    } else if (datePreset === 'upcoming') {
+      if (a.appointment_date < todayStr) return false;
+    } else if (datePreset === 'past') {
+      if (a.appointment_date >= todayStr) return false;
+    } else if (datePreset === 'custom' || dateFilter) {
+      if (dateFilter && a.appointment_date !== dateFilter) return false;
+    }
+
+    // 3. Search Query
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       const matchName = a.full_name?.toLowerCase().includes(q);
       const matchEmail = a.email?.toLowerCase().includes(q);
-      return matchName || matchEmail;
+      const matchPhone = a.phone?.toLowerCase().includes(q);
+      const matchNotes = a.notes?.toLowerCase().includes(q);
+      const serviceName = (a.service?.name || services.find((s) => s.id === a.service_id)?.name || '').toLowerCase();
+      const matchService = serviceName.includes(q);
+      return matchName || matchEmail || matchPhone || matchNotes || matchService;
     }
+
     return true;
   });
 
-  // Overview metrics
-  const totalBookings = adminAppointments.length;
-  const pendingCount = adminAppointments.filter((a) => a.status === 'pending').length;
-  const confirmedCount = adminAppointments.filter((a) => a.status === 'confirmed').length;
-  const completedCount = adminAppointments.filter((a) => a.status === 'completed').length;
-  const activeServicesCount = services.filter((s) => s.is_active).length;
+  // Handle appointment status change
+  const handleUpdateApptStatus = async (id: string, newStatus: AppointmentStatus) => {
+    setUpdatingApptId(id);
+    const res = await updateAppointmentStatus(id, newStatus);
+    setUpdatingApptId(null);
+    if (!res.success) {
+      alert(res.error || 'Failed to update appointment status');
+    }
+  };
 
   // Open Service Modal for Add
   const handleOpenAddService = () => {
@@ -405,27 +491,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     setServiceModalOpen(true);
   };
 
-  // Save Service
+  // Open Service Delete Modal
+  const handleOpenDeleteService = (s: Service) => {
+    setServiceToDelete(s);
+    setDeleteError(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Confirm Service Deletion
+  const handleConfirmDeleteService = async () => {
+    if (!serviceToDelete) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    const res = await deleteService(serviceToDelete.id);
+    setDeleteLoading(false);
+    if (!res.success) {
+      setDeleteError(
+        res.error ||
+          'Cannot delete this service because existing appointments are booked under it. Please deactivate the service instead.'
+      );
+    } else {
+      setDeleteModalOpen(false);
+      setServiceToDelete(null);
+    }
+  };
+
+  // Save Service (Add / Update)
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!serviceFormName.trim()) return;
 
-    // Price field: allow blank value -> blank saves as NULL
+    // Price field: blank string converts cleanly to NULL
     const parsedPrice =
       serviceFormPrice.trim() === '' ? null : Number(serviceFormPrice);
 
     if (editingService) {
       await updateService(editingService.id, {
-        name: serviceFormName,
-        description: serviceFormDesc || null,
+        name: serviceFormName.trim(),
+        description: serviceFormDesc.trim() || null,
         duration_minutes: serviceFormDuration,
         price: parsedPrice,
         is_active: serviceFormActive,
       });
     } else {
       await addService({
-        name: serviceFormName,
-        description: serviceFormDesc || null,
+        name: serviceFormName.trim(),
+        description: serviceFormDesc.trim() || null,
         duration_minutes: serviceFormDuration,
         price: parsedPrice,
         is_active: serviceFormActive,
@@ -435,19 +546,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     setServiceModalOpen(false);
   };
 
+  // Business Hours Handlers
+  const handleUpdateLocalHour = (weekday: number, updates: Partial<BusinessHour>) => {
+    setLocalHours((prev) =>
+      prev.map((h) => {
+        const hWeekday = typeof h.weekday === 'number' ? h.weekday : parseInt(String(h.weekday), 10);
+        return hWeekday === weekday ? { ...h, ...updates } : h;
+      })
+    );
+  };
+
+  const handleSaveSingleHour = async (weekday: number) => {
+    const target = localHours.find((h) => {
+      const hWeekday = typeof h.weekday === 'number' ? h.weekday : parseInt(String(h.weekday), 10);
+      return hWeekday === weekday;
+    });
+    if (!target) return;
+
+    setRowSavingWeekday(weekday);
+    const res = await updateBusinessHour(weekday, {
+      is_open: target.is_open,
+      start_time: target.start_time,
+      end_time: target.end_time,
+    });
+    setRowSavingWeekday(null);
+
+    if (res.success) {
+      setRowSavedWeekday(weekday);
+      setTimeout(() => setRowSavedWeekday(null), 2000);
+    } else {
+      alert(res.error || 'Failed to update business hours for this day');
+    }
+  };
+
+  const handleSaveAllHours = async () => {
+    setHoursSaving(true);
+    const res = await saveAllBusinessHours(localHours);
+    setHoursSaving(false);
+    if (res.success) {
+      setHoursSavedMsg(true);
+      setTimeout(() => setHoursSavedMsg(false), 3000);
+    } else {
+      alert(res.error || 'Failed to save all business hours');
+    }
+  };
+
   // Add Blocked Date
   const handleAddBlockedDateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBlockedDate) return;
-    await addBlockedDate(newBlockedDate, newBlockedReason || null);
+    await addBlockedDate(newBlockedDate, newBlockedReason.trim() || null);
     setNewBlockedDate('');
     setNewBlockedReason('');
+  };
+
+  // Remove Blocked Date
+  const handleRemoveBlockedDate = async (id: string, dateStr: string) => {
+    setDeletingBlockedId(id);
+    await removeBlockedDate(id, dateStr);
+    setDeletingBlockedId(null);
   };
 
   // Save Business Settings
   const handleSaveBusinessSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateBusinessSettings({
+    setSettingsSaving(true);
+    setSettingsError(null);
+
+    const res = await updateBusinessSettings({
       business_name: settingsName.trim() || 'Shanon Lee Tutoring',
       business_email: settingsEmail.trim() || 'shanon.lcm@gmail.com',
       business_phone: settingsPhone.trim() ? settingsPhone.trim() : null,
@@ -455,8 +621,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       slot_interval_minutes: Number(settingsInterval) || 30,
       booking_notice_hours: Number(settingsNotice) || 12,
     });
-    setSettingsSavedMsg(true);
-    setTimeout(() => setSettingsSavedMsg(false), 3000);
+
+    setSettingsSaving(false);
+    if (res.success) {
+      setSettingsSavedMsg(true);
+      setTimeout(() => setSettingsSavedMsg(false), 3000);
+    } else {
+      setSettingsError(res.error || 'Failed to save business settings');
+    }
   };
 
   return (
@@ -632,52 +804,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
         {activeTab === 'overview' && (
           <div className="space-y-6 sm:space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight">
-                {t('admin.overview')}
-              </h1>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight">
+                  {t('admin.overview')}
+                </h1>
+                <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
+                  {todayStr} • {businessSettings.business_name || 'Shanon Lee Tutoring'}
+                </p>
+              </div>
               <span className="text-[10px] uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#25251E] px-4 py-1.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E] self-start sm:self-auto">
                 Operating 7 Days • 09:00–21:00
               </span>
             </div>
 
-            {/* Metric Cards */}
+            {/* 4 Live Calculated Metric Cards + Services */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
-                  {t('admin.totalAppointments')}
-                </span>
-                <span className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] mt-2 block">
-                  {totalBookings}
-                </span>
-              </div>
-
-              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
-                  Pending Review
-                </span>
-                <span className="text-2xl sm:text-3xl font-serif font-bold text-amber-800 dark:text-amber-300 mt-2 block">
-                  {pendingCount}
-                </span>
-              </div>
-
+              {/* 1. Today's Appointments */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
-                  Confirmed
+                  {t('admin.todayAppointments')}
+                </span>
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] mt-2 block">
+                  {todaysAppointments.length}
+                </span>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
+                  Scheduled for today
+                </span>
+              </div>
+
+              {/* 2. Pending Requests */}
+              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
+                  {t('admin.pendingRequests')}
+                </span>
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-amber-800 dark:text-amber-300 mt-2 block">
+                  {pendingAppointments.length}
+                </span>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
+                  Require tutor confirmation
+                </span>
+              </div>
+
+              {/* 3. Upcoming Confirmed */}
+              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
+                  {t('admin.upcomingConfirmed')}
                 </span>
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#5A5A40] dark:text-[#A3B18A] mt-2 block">
-                  {confirmedCount}
+                  {upcomingConfirmedAppointments.length}
+                </span>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
+                  Confirmed future lessons
                 </span>
               </div>
 
+              {/* 4. Completed Lessons */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
-                  Completed
+                  {t('admin.completedAppointments')}
                 </span>
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#4A4A40] dark:text-[#EDEAE1] mt-2 block">
-                  {completedCount}
+                  {completedAppointments.length}
+                </span>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
+                  Successfully taught
                 </span>
               </div>
 
+              {/* 5. Active Services */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs col-span-2 sm:col-span-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
                   {t('admin.activeServices')}
@@ -685,14 +879,142 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#5A5A40] dark:text-[#A3B18A] mt-2 block">
                   {activeServicesCount}
                 </span>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
+                  Active in booking flow
+                </span>
               </div>
+            </div>
+
+            {/* Urgent Review: Pending Appointments Panel */}
+            {pendingAppointments.length > 0 && (
+              <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-[28px] p-6 sm:p-7 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                    <h3 className="font-serif font-bold text-lg sm:text-xl text-amber-900 dark:text-amber-200">
+                      {t('admin.needsReviewTitle')}
+                    </h3>
+                  </div>
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    {pendingAppointments.length} pending
+                  </span>
+                </div>
+
+                <div className="divide-y divide-amber-200/60 dark:divide-amber-900/30 text-xs">
+                  {pendingAppointments.map((appt) => (
+                    <div
+                      key={appt.id}
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div>
+                        <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
+                          {appt.full_name} ({appt.email})
+                        </span>
+                        <span className="text-[#6B6658] dark:text-[#A6A295]">
+                          {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science Tutoring'} •{' '}
+                          <strong className="text-[#2D2C27] dark:text-[#EDEAE1]">{appt.appointment_date}</strong> @{' '}
+                          {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                        </span>
+                        {appt.notes && (
+                          <p className="text-[11px] text-[#8C867A] dark:text-[#A6A295] mt-0.5 italic">
+                            "{appt.notes}"
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <button
+                          disabled={updatingApptId === appt.id}
+                          onClick={() => handleUpdateApptStatus(appt.id, 'confirmed')}
+                          className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] text-white dark:text-[#171714] rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer shadow-xs disabled:opacity-50"
+                        >
+                          {updatingApptId === appt.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          <span>{t('admin.confirmAppt')}</span>
+                        </button>
+                        <button
+                          disabled={updatingApptId === appt.id}
+                          onClick={() => handleUpdateApptStatus(appt.id, 'cancelled')}
+                          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                        >
+                          <span>{t('admin.cancelAppt')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Today's Teaching Schedule */}
+            <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
+                  {t('admin.todayScheduleTitle')}
+                </h3>
+                <span className="text-xs text-[#8C867A] dark:text-[#A6A295]">
+                  {todayStr} ({todaysAppointments.length} lessons)
+                </span>
+              </div>
+
+              {todaysAppointments.length === 0 ? (
+                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
+                  {t('admin.noApptsToday')}
+                </p>
+              ) : (
+                <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
+                  {todaysAppointments.map((appt) => (
+                    <div
+                      key={appt.id}
+                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-serif font-bold text-sm text-[#2D2C27] dark:text-[#EDEAE1]">
+                            {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full font-semibold uppercase text-[9px] ${
+                              appt.status === 'confirmed'
+                                ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB]'
+                                : appt.status === 'completed'
+                                ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1]'
+                                : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                            }`}
+                          >
+                            {appt.status}
+                          </span>
+                        </div>
+                        <span className="text-[#4A4A40] dark:text-[#D1C9BC] block mt-0.5">
+                          {appt.full_name} • {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.phone || appt.email}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {appt.status !== 'completed' && (
+                          <button
+                            disabled={updatingApptId === appt.id}
+                            onClick={() => handleUpdateApptStatus(appt.id, 'completed')}
+                            className="px-3 py-1 bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E] font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
+                          >
+                            {t('admin.completeAppt')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Recent Appointments Preview */}
             <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
-                  Recent Appointments
+                  {t('admin.recentAppointmentsTitle')}
                 </h3>
                 <button
                   onClick={() => setActiveTab('appointments')}
@@ -703,7 +1025,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               </div>
 
               {adminAppointments.length === 0 ? (
-                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center">
+                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
                   No appointments booked yet.
                 </p>
               ) : (
@@ -715,7 +1037,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                           {appt.full_name} ({appt.email})
                         </span>
                         <span className="text-[#8C867A] dark:text-[#A6A295]">
-                          {appt.service?.name || 'Science'} • {appt.appointment_date} @{' '}
+                          {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.appointment_date} @{' '}
                           {formatTime12h(appt.start_time)}
                         </span>
                       </div>
@@ -725,6 +1047,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                             ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]'
                             : appt.status === 'cancelled'
                             ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
+                            : appt.status === 'completed'
+                            ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E]'
                             : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40'
                         }`}
                       >
@@ -753,31 +1077,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
               {/* Actions, Filters & Search */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                <div className="relative flex-1 sm:flex-initial">
-                  <Search className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-2.5" />
-                  <input
-                    id="admin-search-appts"
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={t('admin.searchPlaceholder')}
-                    className="pl-9 pr-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none w-full sm:w-56"
-                  />
-                </div>
-
-                <select
-                  id="admin-filter-status"
-                  value={apptFilter}
-                  onChange={(e) => setApptFilter(e.target.value)}
-                  className="px-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-semibold text-[#4A4A40] dark:text-[#EDEAE1] focus:outline-none cursor-pointer min-h-[38px]"
-                >
-                  <option value="all">{t('admin.filterAll')}</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-
                 <button
                   id="admin-export-csv-btn"
                   onClick={handleExportCSV}
@@ -785,7 +1084,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-[#23231D] hover:bg-[#F5F2ED] dark:hover:bg-[#2E2E24] text-[#5A5A40] dark:text-[#A3B18A] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-semibold transition-colors cursor-pointer min-h-[38px]"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>CSV</span>
+                  <span>{t('admin.exportCSV')}</span>
                 </button>
 
                 <button
@@ -794,8 +1093,131 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   className="flex items-center gap-1.5 px-4 py-2 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714] rounded-xl text-xs uppercase tracking-wider font-semibold shadow-xs transition-colors cursor-pointer min-h-[38px]"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>Schedule Lesson</span>
+                  <span>{t('admin.scheduleLesson')}</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Filter Toolbar */}
+            <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-4 sm:p-5 rounded-2xl border border-[#E8E4D9] dark:border-[#2E2E24] space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Search box */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-2.5" />
+                  <input
+                    id="admin-search-appts"
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={t('admin.searchPlaceholder')}
+                    className="pl-9 pr-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none w-full"
+                  />
+                </div>
+
+                {/* Status Dropdown */}
+                <div className="flex items-center gap-2">
+                  <select
+                    id="admin-filter-status"
+                    value={apptFilter}
+                    onChange={(e) => setApptFilter(e.target.value)}
+                    className="px-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-semibold text-[#4A4A40] dark:text-[#EDEAE1] focus:outline-none cursor-pointer min-h-[38px]"
+                  >
+                    <option value="all">{t('admin.filterAll')}</option>
+                    <option value="pending">{t('admin.statusPending')}</option>
+                    <option value="confirmed">{t('admin.statusConfirmed')}</option>
+                    <option value="completed">{t('admin.statusCompleted')}</option>
+                    <option value="cancelled">{t('admin.statusCancelled')}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Date Filters: Quick Presets + Date Picker */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#E8E4D9] dark:border-[#2E2E24] text-xs">
+                <span className="text-[11px] font-semibold text-[#8C867A] dark:text-[#A6A295] uppercase tracking-wider mr-1">
+                  Dates:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePreset('all');
+                    setDateFilter('');
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    datePreset === 'all' && !dateFilter
+                      ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714]'
+                      : 'bg-white dark:bg-[#23231D] text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9]'
+                  }`}
+                >
+                  {t('admin.dateFilterAll')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePreset('today');
+                    setDateFilter('');
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    datePreset === 'today'
+                      ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714]'
+                      : 'bg-white dark:bg-[#23231D] text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9]'
+                  }`}
+                >
+                  {t('admin.dateFilterToday')} ({todaysAppointments.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePreset('upcoming');
+                    setDateFilter('');
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    datePreset === 'upcoming'
+                      ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714]'
+                      : 'bg-white dark:bg-[#23231D] text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9]'
+                  }`}
+                >
+                  {t('admin.dateFilterUpcoming')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePreset('past');
+                    setDateFilter('');
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    datePreset === 'past'
+                      ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714]'
+                      : 'bg-white dark:bg-[#23231D] text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9]'
+                  }`}
+                >
+                  {t('admin.dateFilterPast')}
+                </button>
+
+                {/* Custom Date Input */}
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[11px] text-[#8C867A] dark:text-[#A6A295]">Single Day:</span>
+                  <input
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => {
+                      setDateFilter(e.target.value);
+                      if (e.target.value) setDatePreset('custom');
+                    }}
+                    className="px-2.5 py-1 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-lg text-xs text-[#2D2C27] dark:text-[#EDEAE1]"
+                  />
+                  {dateFilter && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDateFilter('');
+                        setDatePreset('all');
+                      }}
+                      className="text-[11px] font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                    >
+                      {t('admin.clearDate')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -803,87 +1225,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs overflow-hidden">
               {filteredAppointments.length === 0 ? (
                 <p className="text-xs text-[#8C867A] dark:text-[#A6A295] p-12 text-center font-light">
-                  No appointments found matching your criteria.
+                  {t('admin.noFilteredAppts')}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs min-w-[650px]">
+                  <table className="w-full text-left text-xs min-w-[700px]">
                     <thead className="bg-[#E8E4D9]/60 dark:bg-[#25251E] border-b border-[#E8E4D9] dark:border-[#2E2E24] text-[#5A5A40] dark:text-[#A3B18A] font-semibold uppercase tracking-wider text-[10px]">
                       <tr>
-                        <th className="p-4">Client</th>
-                        <th className="p-4">Service</th>
-                        <th className="p-4">Date & Time</th>
-                        <th className="p-4">Contact</th>
-                        <th className="p-4">Notes</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Actions</th>
+                        <th className="p-4">{t('admin.colClient')}</th>
+                        <th className="p-4">{t('admin.colService')}</th>
+                        <th className="p-4">{t('admin.colDateTime')}</th>
+                        <th className="p-4">{t('admin.colContact')}</th>
+                        <th className="p-4">{t('admin.colNotes')}</th>
+                        <th className="p-4">{t('admin.colStatus')}</th>
+                        <th className="p-4 text-right">{t('admin.colActions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24]">
-                      {filteredAppointments.map((appt) => (
-                        <tr key={appt.id} className="hover:bg-white/60 dark:hover:bg-[#23231D]/60 transition-colors">
-                          <td className="p-4 font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                            {appt.full_name}
-                          </td>
-                          <td className="p-4 text-[#4A4A40] dark:text-[#D1C9BC]">
-                            {appt.service?.name || 'Science'}
-                          </td>
-                          <td className="p-4 font-medium text-[#2D2C27] dark:text-[#EDEAE1]">
-                            {appt.appointment_date} <br />
-                            <span className="text-[#5A5A40] dark:text-[#A3B18A] font-semibold">
-                              {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
-                            </span>
-                          </td>
-                          <td className="p-4 text-[#6B6658] dark:text-[#A6A295]">
-                            {appt.email} <br />
-                            <span className="text-[#8C867A] dark:text-[#7A766A]">{appt.phone}</span>
-                          </td>
-                          <td className="p-4 text-[#6B6658] dark:text-[#A6A295] max-w-xs truncate">
-                            {appt.notes || '—'}
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`px-3 py-1 rounded-full font-semibold uppercase text-[10px] ${
-                                appt.status === 'confirmed'
-                                  ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]'
-                                  : appt.status === 'cancelled'
-                                  ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
-                                  : appt.status === 'completed'
-                                  ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E]'
-                                  : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40'
-                              }`}
-                            >
-                              {appt.status}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
-                            {appt.status !== 'confirmed' && (
-                              <button
-                                onClick={() => updateAppointmentStatus(appt.id, 'confirmed')}
-                                className="px-3 py-1 bg-[#E8E4D9] dark:bg-[#25251E] hover:bg-[#D1C9BC] dark:hover:bg-[#313128] text-[#5A5A40] dark:text-[#C6D4AB] font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
+                      {filteredAppointments.map((appt) => {
+                        const matchedService = appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science Tutoring';
+                        const isUpdating = updatingApptId === appt.id;
+
+                        return (
+                          <tr key={appt.id} className="hover:bg-white/60 dark:hover:bg-[#23231D]/60 transition-colors">
+                            <td className="p-4 font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                              {appt.full_name}
+                            </td>
+                            <td className="p-4 text-[#4A4A40] dark:text-[#D1C9BC]">
+                              {matchedService}
+                            </td>
+                            <td className="p-4 font-medium text-[#2D2C27] dark:text-[#EDEAE1]">
+                              {appt.appointment_date} <br />
+                              <span className="text-[#5A5A40] dark:text-[#A3B18A] font-semibold">
+                                {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                              </span>
+                            </td>
+                            <td className="p-4 text-[#6B6658] dark:text-[#A6A295]">
+                              {appt.email} <br />
+                              <span className="text-[#8C867A] dark:text-[#7A766A]">{appt.phone || '—'}</span>
+                            </td>
+                            <td className="p-4 text-[#6B6658] dark:text-[#A6A295] max-w-xs truncate" title={appt.notes || undefined}>
+                              {appt.notes || '—'}
+                            </td>
+                            <td className="p-4">
+                              <span
+                                className={`px-3 py-1 rounded-full font-semibold uppercase text-[10px] ${
+                                  appt.status === 'confirmed'
+                                    ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]'
+                                    : appt.status === 'cancelled'
+                                    ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
+                                    : appt.status === 'completed'
+                                    ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E]'
+                                    : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40'
+                                }`}
                               >
-                                Confirm
-                              </button>
-                            )}
-                            {appt.status !== 'completed' && (
-                              <button
-                                onClick={() => updateAppointmentStatus(appt.id, 'completed')}
-                                className="px-3 py-1 bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E] font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
+                                {appt.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                              {/* Direct Status Selector */}
+                              <select
+                                disabled={isUpdating}
+                                value={appt.status}
+                                onChange={(e) =>
+                                  handleUpdateApptStatus(appt.id, e.target.value as AppointmentStatus)
+                                }
+                                className="px-2.5 py-1 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-lg text-[11px] font-semibold text-[#4A4A40] dark:text-[#EDEAE1] cursor-pointer disabled:opacity-50"
                               >
-                                Complete
-                              </button>
-                            )}
-                            {appt.status !== 'cancelled' && (
-                              <button
-                                onClick={() => updateAppointmentStatus(appt.id, 'cancelled')}
-                                className="px-3 py-1 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                <option value="pending">{t('admin.statusPending')}</option>
+                                <option value="confirmed">{t('admin.statusConfirmed')}</option>
+                                <option value="completed">{t('admin.statusCompleted')}</option>
+                                <option value="cancelled">{t('admin.statusCancelled')}</option>
+                              </select>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -957,7 +1374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-[#E8E4D9] dark:border-[#2E2E24] flex items-center justify-between">
+                  <div className="mt-6 pt-4 border-t border-[#E8E4D9] dark:border-[#2E2E24] flex items-center justify-between gap-2 flex-wrap">
                     <button
                       onClick={() => updateService(s.id, { is_active: !s.is_active })}
                       className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold rounded-full transition-colors cursor-pointer min-h-[36px] ${
@@ -969,13 +1386,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                       {s.is_active ? 'Deactivate' : 'Activate'}
                     </button>
 
-                    <button
-                      onClick={() => handleOpenEditService(s)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] dark:hover:text-white bg-white dark:bg-[#25251E] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full transition-colors cursor-pointer min-h-[36px]"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      <span>{t('admin.editService')}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEditService(s)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] dark:hover:text-white bg-white dark:bg-[#25251E] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full transition-colors cursor-pointer min-h-[36px]"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>{t('admin.editService')}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenDeleteService(s)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 bg-white dark:bg-[#25251E] border border-red-200 dark:border-red-900/40 rounded-full transition-colors cursor-pointer min-h-[36px]"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{t('admin.deleteService')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -986,19 +1413,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
         {/* BUSINESS HOURS TAB */}
         {activeTab === 'hours' && (
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight">
-                {t('admin.businessHours')}
-              </h1>
-              <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
-                Default: All 7 days open 09:00 to 21:00. Modifying hours immediately updates booking slot availability.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight">
+                  {t('admin.businessHours')}
+                </h1>
+                <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
+                  Standard tutoring availability (09:00–21:00 across all 7 days). Updates persist directly to Supabase.
+                </p>
+              </div>
+
+              <button
+                id="admin-save-all-hours-btn"
+                disabled={hoursSaving}
+                onClick={handleSaveAllHours}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold uppercase tracking-widest text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] disabled:opacity-50 rounded-full transition-all shadow-xs cursor-pointer min-h-[40px]"
+              >
+                {hoursSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{t('admin.saveAllHours')}</span>
+              </button>
             </div>
+
+            {hoursSavedMsg && (
+              <div className="p-3.5 bg-[#E8E4D9] dark:bg-[#25251E] rounded-2xl border border-[#D1C9BC] dark:border-[#38382E] text-xs text-[#5A5A40] dark:text-[#C6D4AB] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{t('admin.hoursSaved')}</span>
+              </div>
+            )}
 
             <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs p-5 sm:p-7 space-y-3.5">
               {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(
                 (dayName, dayIndex) => {
-                  const schedule = businessHours.find((h) => {
+                  const schedule = localHours.find((h) => {
                     if (typeof h.weekday === 'number') return h.weekday === dayIndex;
                     if (typeof h.weekday === 'string') {
                       const p = parseInt(h.weekday, 10);
@@ -1011,35 +1461,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   const isOpen = schedule ? schedule.is_open : true;
                   const startTime = schedule?.start_time || '09:00';
                   const endTime = schedule?.end_time || '21:00';
+                  const isRowSaving = rowSavingWeekday === dayIndex;
+                  const isRowSaved = rowSavedWeekday === dayIndex;
 
                   return (
                     <div
                       key={dayIndex}
                       className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A]"
                     >
-                      <div className="flex items-center gap-3 w-36">
+                      <div className="flex items-center gap-3 w-40">
                         <input
                           type="checkbox"
+                          id={`hour-check-${dayIndex}`}
                           checked={isOpen}
                           onChange={(e) =>
-                            updateBusinessHour(schedule?.id || dayIndex, {
+                            handleUpdateLocalHour(dayIndex, {
                               is_open: e.target.checked,
                             })
                           }
-                          className="w-4 h-4 rounded text-[#5A5A40] dark:text-[#A3B18A] focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A]"
+                          className="w-4 h-4 rounded text-[#5A5A40] dark:text-[#A3B18A] focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] cursor-pointer"
                         />
-                        <span className={`text-xs font-serif font-semibold ${isOpen ? 'text-[#2D2C27] dark:text-[#EDEAE1]' : 'text-[#8C867A] dark:text-[#7A766A]'}`}>
+                        <label
+                          htmlFor={`hour-check-${dayIndex}`}
+                          className={`text-xs font-serif font-semibold cursor-pointer ${
+                            isOpen ? 'text-[#2D2C27] dark:text-[#EDEAE1]' : 'text-[#8C867A] dark:text-[#7A766A]'
+                          }`}
+                        >
                           {dayName}
-                        </span>
+                        </label>
                       </div>
 
                       {isOpen ? (
-                        <div className="flex items-center gap-2 text-xs font-medium text-[#4A4A40] dark:text-[#EDEAE1]">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#4A4A40] dark:text-[#EDEAE1]">
                           <input
                             type="time"
                             value={startTime}
                             onChange={(e) =>
-                              updateBusinessHour(schedule?.id || dayIndex, {
+                              handleUpdateLocalHour(dayIndex, {
                                 start_time: e.target.value,
                               })
                             }
@@ -1050,15 +1508,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                             type="time"
                             value={endTime}
                             onChange={(e) =>
-                              updateBusinessHour(schedule?.id || dayIndex, {
+                              handleUpdateLocalHour(dayIndex, {
                                 end_time: e.target.value,
                               })
                             }
                             className="px-3 py-1.5 bg-[#F5F2ED] dark:bg-[#1A1A15] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs text-[#2D2C27] dark:text-[#EDEAE1]"
                           />
+                          <button
+                            type="button"
+                            disabled={isRowSaving}
+                            onClick={() => handleSaveSingleHour(dayIndex)}
+                            className="ml-auto sm:ml-2 px-3 py-1 bg-[#E8E4D9] dark:bg-[#2A2A22] hover:bg-[#D1C9BC] text-[#5A5A40] dark:text-[#C6D4AB] rounded-lg text-[11px] font-semibold uppercase tracking-wider cursor-pointer min-h-[30px]"
+                          >
+                            {isRowSaving ? 'Saving...' : isRowSaved ? 'Saved ✓' : 'Save'}
+                          </button>
                         </div>
                       ) : (
-                        <span className="text-xs font-semibold text-[#8C867A] dark:text-[#7A766A]">Closed</span>
+                        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3">
+                          <span className="text-xs font-semibold text-[#8C867A] dark:text-[#7A766A]">
+                            Closed on this day
+                          </span>
+                          <button
+                            type="button"
+                            disabled={isRowSaving}
+                            onClick={() => handleSaveSingleHour(dayIndex)}
+                            className="px-3 py-1 bg-[#E8E4D9] dark:bg-[#2A2A22] hover:bg-[#D1C9BC] text-[#5A5A40] dark:text-[#C6D4AB] rounded-lg text-[11px] font-semibold uppercase tracking-wider cursor-pointer min-h-[30px]"
+                          >
+                            {isRowSaving ? 'Saving...' : isRowSaved ? 'Saved ✓' : 'Save'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -1076,7 +1554,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 {t('admin.blockedDates')}
               </h1>
               <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
-                Blocked dates prevent all bookings and rescheduling on that day.
+                Blocked dates prevent all client bookings and lesson rescheduling on that day.
               </p>
             </div>
 
@@ -1123,11 +1601,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs divide-y divide-[#E8E4D9] dark:divide-[#2E2E24]">
               {blockedDates.length === 0 ? (
                 <p className="p-8 text-center text-xs text-[#8C867A] dark:text-[#A6A295] font-light">
-                  No blocked dates configured.
+                  {t('admin.noBlockedDates')}
                 </p>
               ) : (
                 blockedDates.map((b) => (
-                  <div key={b.id} className="p-4.5 flex items-center justify-between text-xs">
+                  <div key={b.id || b.blocked_date} className="p-4.5 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
                         {b.blocked_date}
@@ -1137,10 +1615,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                       </span>
                     </div>
                     <button
-                      onClick={() => removeBlockedDate(b.id)}
-                      className="px-3.5 py-1 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-full cursor-pointer"
+                      disabled={deletingBlockedId === (b.id || b.blocked_date)}
+                      onClick={() => handleRemoveBlockedDate(b.id, b.blocked_date)}
+                      className="px-3.5 py-1 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-full cursor-pointer disabled:opacity-50"
                     >
-                      Remove
+                      {deletingBlockedId === (b.id || b.blocked_date) ? 'Removing...' : 'Remove'}
                     </button>
                   </div>
                 ))
@@ -1157,7 +1636,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 {t('admin.settings')}
               </h1>
               <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
-                Configure business metadata and booking constraints. Phone and address remain hidden from public if NULL.
+                Configure business metadata and booking constraints. Phone and address remain hidden from public if blank.
               </p>
             </div>
 
@@ -1165,6 +1644,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               <div className="p-3.5 bg-[#E8E4D9] dark:bg-[#25251E] rounded-2xl border border-[#D1C9BC] dark:border-[#38382E] text-xs text-[#5A5A40] dark:text-[#C6D4AB] flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Settings saved successfully!</span>
+              </div>
+            )}
+
+            {settingsError && (
+              <div className="p-3.5 bg-red-50 dark:bg-red-950/40 rounded-2xl border border-red-200 dark:border-red-900/40 text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{settingsError}</span>
               </div>
             )}
 
@@ -1237,6 +1723,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                     step={15}
                     className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
                   />
+                  <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] block mt-1">
+                    {t('admin.slotIntervalDesc')}
+                  </span>
                 </div>
 
                 <div>
@@ -1250,15 +1739,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                     min={0}
                     className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
                   />
+                  <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] block mt-1">
+                    {t('admin.noticeHoursDesc')}
+                  </span>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-[#E8E4D9] dark:border-[#2E2E24] flex justify-end">
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-7 py-3 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full shadow-xs cursor-pointer min-h-[44px]"
+                  disabled={settingsSaving}
+                  className="w-full sm:w-auto px-7 py-3 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] disabled:opacity-50 rounded-full shadow-xs cursor-pointer min-h-[44px]"
                 >
-                  {t('admin.saveChanges')}
+                  {settingsSaving ? 'Saving...' : t('admin.saveChanges')}
                 </button>
               </div>
             </form>
@@ -1553,6 +2046,77 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE SERVICE CONFIRMATION MODAL */}
+      {deleteModalOpen && serviceToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-8 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <h3 className="text-lg font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
+                  {t('admin.confirmDeleteService')}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setServiceToDelete(null);
+                  setDeleteError(null);
+                }}
+                className="p-1.5 rounded-full text-[#8C867A] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] hover:bg-[#E8E4D9] dark:hover:bg-[#25251E] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#6B6658] dark:text-[#A6A295] leading-relaxed">
+              {t('admin.deleteServiceWarning')}
+            </p>
+
+            <div className="p-3.5 bg-white dark:bg-[#23231D] rounded-2xl border border-[#E8E4D9] dark:border-[#33332A] text-xs">
+              <span className="font-semibold text-[#2D2C27] dark:text-[#EDEAE1] block">
+                {serviceToDelete.name}
+              </span>
+              <span className="text-[#8C867A] dark:text-[#A6A295] block mt-0.5">
+                {serviceToDelete.duration_minutes}m {serviceToDelete.price !== null ? `· $${serviceToDelete.price} AUD` : ''}
+              </span>
+            </div>
+
+            {deleteError && (
+              <div className="p-3.5 bg-red-50 dark:bg-red-950/40 rounded-2xl border border-red-200 dark:border-red-900/40 text-xs text-red-700 dark:text-red-300 space-y-1.5">
+                <p className="font-semibold">Cannot Delete Service</p>
+                <p className="leading-relaxed font-light">{deleteError}</p>
+                <p className="text-[11px] text-[#8C867A] dark:text-[#A6A295] pt-1">
+                  Tip: Use the "Deactivate" toggle instead to preserve historical appointment records.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8E4D9] dark:border-[#2E2E24]">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setServiceToDelete(null);
+                  setDeleteError(null);
+                }}
+                className="px-5 py-2 text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9] dark:hover:bg-[#25251E] rounded-full font-semibold uppercase tracking-wider text-[11px] cursor-pointer min-h-[36px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={handleConfirmDeleteService}
+                className="px-6 py-2.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white rounded-full font-semibold uppercase tracking-widest text-[11px] shadow-xs cursor-pointer min-h-[36px]"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Service'}
+              </button>
+            </div>
           </div>
         </div>
       )}
