@@ -1194,7 +1194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </button>
 
                 {/* Custom Date Input */}
-                <div className="flex items-center gap-1.5 ml-auto">
+                <div className="flex items-center gap-1.5 sm:ml-auto flex-wrap sm:flex-nowrap">
                   <span className="text-[11px] text-[#8C867A] dark:text-[#A6A295]">Single Day:</span>
                   <input
                     type="date"
@@ -1761,8 +1761,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
       {/* SERVICE EDIT / ADD MODAL */}
       {serviceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-[#FDFCF8] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FDFCF8] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
               <h3 className="font-serif font-bold text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
                 {editingService ? t('admin.editService') : t('admin.addService')}
@@ -1869,7 +1869,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
       {/* SCHEDULE LESSON MODAL */}
       {apptModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-8 max-w-lg w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
               <div>
@@ -2052,8 +2052,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
       {/* DELETE SERVICE CONFIRMATION MODAL */}
       {deleteModalOpen && serviceToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-8 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-8 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
               <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                 <AlertCircle className="w-5 h-5 shrink-0" />

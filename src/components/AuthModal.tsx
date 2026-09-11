@@ -79,8 +79,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] shadow-2xl border border-[#E8E4D9] dark:border-[#33332A] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-md bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] shadow-2xl border border-[#E8E4D9] dark:border-[#33332A] overflow-hidden my-auto">
         {/* Header */}
         <div className="bg-[#F5F2ED] dark:bg-[#23231D] text-[#2D2C27] dark:text-[#EDEAE1] px-7 py-5 flex items-center justify-between border-b border-[#E8E4D9] dark:border-[#33332A]">
           <div>

@@ -547,8 +547,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
         {/* CANCELLATION CONFIRMATION MODAL */}
         {cancelModalAppt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[30px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#33332A] shadow-2xl space-y-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[30px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#33332A] shadow-2xl space-y-5 my-auto">
               <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-6 h-6 shrink-0" />
                 <h3 className="font-serif font-bold text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
@@ -592,8 +592,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
         {/* RESCHEDULE MODAL */}
         {rescheduleModalAppt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#33332A] shadow-2xl space-y-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] p-6 sm:p-7 max-w-md w-full border border-[#E8E4D9] dark:border-[#33332A] shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#33332A]">
                 <h3 className="font-serif font-bold text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
                   {t('portal.rescheduleTitle')}

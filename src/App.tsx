@@ -4,19 +4,24 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { ServicesSection } from './components/ServicesSection';
-import { JuniorAndHscSection } from './components/JuniorAndHscSection';
 import { PackagesSection } from './components/PackagesSection';
-import { WhySection } from './components/WhySection';
-import { HowItWorks } from './components/HowItWorks';
-import { AboutSection } from './components/AboutSection';
 import { Footer } from './components/Footer';
 import { BookingFlow } from './components/BookingFlow';
 import { AuthModal } from './components/AuthModal';
 import { ClientPortal } from './components/ClientPortal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PackageId } from './types';
+
+/*
+ * Archived Landing Page Sections:
+ * The following feature components are preserved in src/components/ for reference / future reactivation:
+ * - Hero (src/components/Hero.tsx)
+ * - ServicesSection (src/components/ServicesSection.tsx)
+ * - JuniorAndHscSection (src/components/JuniorAndHscSection.tsx)
+ * - WhySection (src/components/WhySection.tsx)
+ * - HowItWorks (src/components/HowItWorks.tsx)
+ * - AboutSection (src/components/AboutSection.tsx)
+ */
 
 type CurrentView = 'landing' | 'client-portal' | 'admin-dashboard';
 
@@ -45,14 +50,7 @@ const MainAppContent: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Trigger booking with specific service
-  const handleSelectService = (serviceId: string) => {
-    setSelectedServiceId(serviceId);
-    setSelectedPackageId(undefined);
-    setBookingModalOpen(true);
-  };
-
-  // Trigger booking with specific package
+  // Trigger booking with specific package from Structured Tutoring Plans
   const handleSelectPackage = (pkgId: PackageId) => {
     setSelectedPackageId(pkgId);
     setBookingModalOpen(true);
@@ -110,25 +108,8 @@ const MainAppContent: React.FC = () => {
       <div className="flex-1">
         {currentView === 'landing' && (
           <main>
-            <Hero
-              onOpenBooking={handleOpenBooking}
-              onOpenServices={() => {
-                const el = document.getElementById('services-curriculum');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            <ServicesSection onSelectService={handleSelectService} />
-
-            <JuniorAndHscSection onSelectService={handleSelectService} />
-
+            {/* Structured Tutoring Plans Section */}
             <PackagesSection onSelectPackage={handleSelectPackage} />
-
-            <WhySection />
-
-            <HowItWorks />
-
-            <AboutSection />
           </main>
         )}
 

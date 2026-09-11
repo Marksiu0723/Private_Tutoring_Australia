@@ -14,7 +14,6 @@ import {
   LogOut,
   ChevronDown,
   MapPin,
-  Search,
   ArrowRight,
 } from 'lucide-react';
 
@@ -42,43 +41,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { businessSettings } = useData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const businessName = businessSettings.business_name || 'Shanon Lee Tutoring';
 
   const handleAuthTrigger = () => {
     if (onOpenAuth) onOpenAuth('signin');
     else if (onOpenAuthModal) onOpenAuthModal();
-  };
-
-  const scrollToSection = (id: string) => {
-    setMobileMenuOpen(false);
-    if (currentView !== 'home' && currentView !== 'landing') {
-      onNavigateHome();
-      setTimeout(() => {
-        const el = document.getElementById(id);
-        el?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } else {
-      const el = document.getElementById(id);
-      el?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    const q = searchQuery.toLowerCase();
-    
-    if (q.includes('hsc') || q.includes('chem') || q.includes('bio') || q.includes('junior') || q.includes('year') || q.includes('science')) {
-      scrollToSection('tutoring-services');
-    } else if (q.includes('pack') || q.includes('term') || q.includes('price') || q.includes('cost')) {
-      scrollToSection('tutoring-packages');
-    } else if (q.includes('about') || q.includes('shanon') || q.includes('why') || q.includes('philosophy')) {
-      scrollToSection('about-philosophy');
-    } else {
-      scrollToSection('tutoring-services');
-    }
   };
 
   return (
@@ -192,79 +160,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
-            {/* Desktop Nav Links */}
-            <nav className="hidden lg:flex items-center space-x-1">
-              <button
-                id="nav-link-home"
-                onClick={onNavigateHome}
-                className={`px-3.5 py-2 text-xs uppercase tracking-[0.18em] font-semibold rounded-full transition-colors cursor-pointer ${
-                  currentView === 'home' || currentView === 'landing'
-                    ? 'text-[#5A5A40] dark:text-[#C6D4AB]'
-                    : 'text-[#6B6658] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1]'
-                }`}
-              >
-                {t('nav.home')}
-              </button>
-
-              <button
-                id="nav-link-tutoring"
-                onClick={() => scrollToSection('tutoring-services')}
-                className="inline-flex items-center gap-1 px-3.5 py-2 text-xs uppercase tracking-[0.18em] font-medium text-[#6B6658] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] rounded-full transition-colors cursor-pointer"
-              >
-                <span>{t('nav.tutoring')}</span>
-                <ChevronDown className="w-3 h-3 text-[#8C867A] dark:text-[#7A7568]" />
-              </button>
-
-              <button
-                id="nav-link-packages"
-                onClick={() => scrollToSection('tutoring-packages')}
-                className="px-3.5 py-2 text-xs uppercase tracking-[0.18em] font-medium text-[#6B6658] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] rounded-full transition-colors cursor-pointer"
-              >
-                {t('nav.packages')}
-              </button>
-
-              <button
-                id="nav-link-about"
-                onClick={() => scrollToSection('about-philosophy')}
-                className="px-3.5 py-2 text-xs uppercase tracking-[0.18em] font-medium text-[#6B6658] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] rounded-full transition-colors cursor-pointer"
-              >
-                {t('nav.about')}
-              </button>
-            </nav>
-
-            {/* Right: Dedicated Search Bar (Admin removed) + Aligned Action Buttons */}
-            <div className="hidden md:flex items-center gap-3">
-              {/* Expanded Search Bar - taking the space previously occupied by duplicate admin button */}
-              <form onSubmit={handleSearchSubmit} className="relative w-44 md:w-48 lg:w-60 xl:w-72">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('nav.searchPlaceholder')}
-                  className="w-full h-10 pl-9 pr-9 text-xs bg-[#F5F2ED] dark:bg-[#20201A] border border-[#E8E4D9] dark:border-[#313128] rounded-full text-[#2D2C27] dark:text-[#EDEAE1] placeholder-[#8C867A] dark:placeholder-[#7A7568] focus:outline-none focus:ring-1.5 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] transition-all"
-                />
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8C867A] dark:text-[#7A7568] pointer-events-none" />
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8C867A] hover:text-[#2D2C27] dark:hover:text-white p-0.5"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#8C867A] hover:text-[#5A5A40] dark:hover:text-[#A3B18A] transition-colors"
-                    title="Search"
-                    aria-label="Submit search"
-                  >
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </form>
-
+            {/* Right: Aligned Action Buttons (Client Portal & Book CTA) */}
+            <div className="hidden sm:flex items-center gap-3">
               {/* CLIENT PORTAL BUTTON - FIXED TO EXACT SAME SIZE (h-10) AS BOOK CTA */}
               {user ? (
                 <div className="flex items-center gap-1.5">
@@ -315,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             {/* Mobile Actions: Lang Button, Menu Toggle */}
-            <div className="flex md:hidden items-center gap-2">
+            <div className="flex sm:hidden items-center gap-2">
               <button
                 id="mobile-lang-btn"
                 onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
@@ -340,83 +237,53 @@ export const Navbar: React.FC<NavbarProps> = ({
       {mobileMenuOpen && (
         <div
           id="mobile-nav-drawer"
-          className="md:hidden border-b border-[#E8E4D9] dark:border-[#2D2D24] bg-[#FDFCF8] dark:bg-[#171714] px-4 pt-3 pb-6 space-y-2 animate-in fade-in-50"
+          className="sm:hidden border-b border-[#E8E4D9] dark:border-[#2D2D24] bg-[#FDFCF8] dark:bg-[#171714] px-4 pt-3 pb-6 space-y-3 animate-in fade-in-50"
         >
+          {/* Client Portal Button in Mobile Drawer */}
           <button
             onClick={() => {
-              onNavigateHome();
               setMobileMenuOpen(false);
+              if (user) onOpenClientPortal();
+              else handleAuthTrigger();
             }}
-            className="w-full text-left px-4 py-3 text-xs uppercase tracking-widest font-semibold text-[#2D2C27] dark:text-[#EDEAE1] hover:bg-[#F5F2ED] dark:hover:bg-[#20201A] rounded-xl cursor-pointer"
+            className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
           >
-            {t('nav.home')}
+            <User className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A]" />
+            <span>{user ? t('nav.clientPortal') : t('auth.signIn')}</span>
           </button>
+
+          {/* Book Button in Mobile Drawer */}
           <button
-            onClick={() => scrollToSection('tutoring-services')}
-            className="w-full text-left px-4 py-3 text-xs uppercase tracking-widest font-medium text-[#8C867A] dark:text-[#A6A295] hover:text-[#5A5A40] dark:hover:text-[#EDEAE1] hover:bg-[#F5F2ED] dark:hover:bg-[#20201A] rounded-xl cursor-pointer"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onOpenBooking();
+            }}
+            className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full shadow-xs cursor-pointer"
           >
-            {t('nav.tutoring')}
+            <Calendar className="w-4 h-4 text-[#E8E4D9] dark:text-[#171714]" />
+            <span>{t('nav.book')}</span>
+            <ArrowRight className="w-4 h-4 ml-1 opacity-80" />
           </button>
+
+          {/* Admin Button in Mobile Drawer */}
           <button
-            onClick={() => scrollToSection('tutoring-packages')}
-            className="w-full text-left px-4 py-3 text-xs uppercase tracking-widest font-medium text-[#8C867A] dark:text-[#A6A295] hover:text-[#5A5A40] dark:hover:text-[#EDEAE1] hover:bg-[#F5F2ED] dark:hover:bg-[#20201A] rounded-xl cursor-pointer"
+            id="mobile-nav-admin-btn"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              onOpenAdmin();
+            }}
+            className="w-full h-9 px-4 inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
           >
-            {t('nav.packages')}
-          </button>
-          <button
-            onClick={() => scrollToSection('about-philosophy')}
-            className="w-full text-left px-4 py-3 text-xs uppercase tracking-widest font-medium text-[#8C867A] dark:text-[#A6A295] hover:text-[#5A5A40] dark:hover:text-[#EDEAE1] hover:bg-[#F5F2ED] dark:hover:bg-[#20201A] rounded-xl cursor-pointer"
-          >
-            {t('nav.about')}
+            <ShieldCheck className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
+            <span>{t('nav.admin')}</span>
           </button>
 
           {/* Theme Selector Segmented in Mobile Drawer */}
-          <div className="pt-3 pb-1 border-t border-[#E8E4D9] dark:border-[#2D2D24]">
+          <div className="pt-2 border-t border-[#E8E4D9] dark:border-[#2D2D24]">
             <div className="text-[10px] uppercase tracking-wider font-semibold text-[#8C867A] dark:text-[#A6A295] mb-2 px-1">
               {t('nav.themeLabel')}
             </div>
             <ThemeToggle variant="segmented" className="w-full justify-center" />
-          </div>
-
-          <div className="pt-3 border-t border-[#E8E4D9] dark:border-[#2D2D24] flex flex-col gap-2.5">
-            {/* Client Portal Button in Mobile Drawer */}
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                if (user) onOpenClientPortal();
-                else handleAuthTrigger();
-              }}
-              className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
-            >
-              <User className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>{user ? t('nav.clientPortal') : t('auth.signIn')}</span>
-            </button>
-
-            {/* Admin Button in Mobile Drawer - Smaller size */}
-            <button
-              id="mobile-nav-admin-btn"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenAdmin();
-              }}
-              className="w-full h-9 px-4 inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>{t('nav.admin')}</span>
-            </button>
-
-            {/* Book Button in Mobile Drawer */}
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenBooking();
-              }}
-              className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-semibold text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full shadow-xs cursor-pointer"
-            >
-              <Calendar className="w-4 h-4 text-[#E8E4D9] dark:text-[#171714]" />
-              <span>{t('nav.book')}</span>
-              <ArrowRight className="w-4 h-4 ml-1 opacity-80" />
-            </button>
           </div>
         </div>
       )}
