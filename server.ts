@@ -154,13 +154,7 @@ app.get('/api/client/appointments', async (req: Request, res: Response): Promise
       }
     }
 
-    // If Supabase has no appointments for this user, check in-memory / demo appointments
-    if (appointments.length === 0) {
-      const matched = fallbackAppointments.filter(
-        (a) => a.email.toLowerCase() === userEmail.toLowerCase()
-      );
-      appointments = matched;
-    }
+    // We will no longer load fallback demo appointments when connected to a live database
 
     res.json({ appointments });
   } catch (err: any) {

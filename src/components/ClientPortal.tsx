@@ -247,32 +247,20 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       });
 
       if (!response.ok) {
-        // Fallback to local appointments matching this client's email
-        const localMatches = adminAppointments.filter(
-          (a) => user?.email && a.email.toLowerCase() === user.email.toLowerCase()
-        );
-        setAppointments(localMatches);
+        setAppointments([]);
         return;
       }
 
       const data = await response.json();
       const loaded = data.appointments || [];
 
-      // If server has no appointments stored for this user, also check local demo appointments
-      if (loaded.length === 0) {
-        const localMatches = adminAppointments.filter(
-          (a) => user?.email && a.email.toLowerCase() === user.email.toLowerCase()
-        );
-        setAppointments(localMatches);
-      } else {
-        setAppointments(loaded);
-      }
-    } catch {
-      // Local fallback for offline or interrupted requests
-      const localMatches = adminAppointments.filter(
-        (a) => user?.email && a.email.toLowerCase() === user.email.toLowerCase()
-      );
-      setAppointments(localMatches);
+      // We strictly use the loaded database appointments. 
+      // Do not inject demo data when loading via Supabase.
+      setAppointments(loaded);
+    } catch (err) {
+      console.warn('Appointments fetch failed', err);
+      // Let it remain empty rather than populating demo data
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
