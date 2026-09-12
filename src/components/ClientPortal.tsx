@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Appointment, TimeSlot, StudentUpload } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   formatDateToYMD,
   parseYMDToDate,
@@ -227,9 +227,9 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     };
   }, [session, user]);
 
-  // Load client appointments securely via server-side endpoint with graceful local fallback
+  // Load client appointments directly from Supabase (RLS ensures they only see their own)
   const loadClientAppointments = useCallback(async () => {
-    if (!user) {
+    if (!user || !user.email) {
       setLoading(false);
       return;
     }
@@ -238,33 +238,35 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     setErrorMsg(null);
 
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch('/api/client/appointments', {
-        headers: {
-          Authorization: headers.Authorization,
-          'x-user-email': headers['x-user-email'],
-        },
-      });
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .ilike('email', user.email)
+          .order('appointment_date', { ascending: true })
+          .order('start_time', { ascending: true });
 
-      if (!response.ok) {
+        if (error) {
+          console.error('Error fetching client appointments:', error.message);
+          setAppointments([]);
+        } else if (data) {
+          // Decorate with service relation based on DataContext active services
+          const enriched = data.map((a: Appointment) => ({
+            ...a,
+            service: services.find(s => s.id === a.service_id) || null,
+          }));
+          setAppointments(enriched);
+        }
+      } else {
         setAppointments([]);
-        return;
       }
-
-      const data = await response.json();
-      const loaded = data.appointments || [];
-
-      // We strictly use the loaded database appointments. 
-      // Do not inject demo data when loading via Supabase.
-      setAppointments(loaded);
     } catch (err) {
       console.warn('Appointments fetch failed', err);
-      // Let it remain empty rather than populating demo data
       setAppointments([]);
     } finally {
       setLoading(false);
     }
-  }, [user, getAuthHeaders, adminAppointments]);
+  }, [user, services]);
 
   useEffect(() => {
     loadClientAppointments();
@@ -297,18 +299,16 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
     setCancelling(true);
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`/api/client/appointments/${cancelModalAppt.id}/cancel`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          appointmentId: cancelModalAppt.id,
-        }),
-      });
+      if (isSupabaseConfigured) {
+        const { error } = await supabase
+          .from('appointments')
+          .update({ status: 'cancelled' })
+          .eq('id', cancelModalAppt.id);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Cancellation failed.');
+        if (error) {
+          console.error("Cancel via Supabase error:", error);
+          throw error;
+        }
       }
 
       // Update locally
@@ -318,7 +318,8 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       updateAppointmentStatus(cancelModalAppt.id, 'cancelled');
       setCancelModalAppt(null);
     } catch (err: any) {
-      // Graceful local cancellation update
+      console.warn("Cancellation failed:", err);
+      // Fallback local cancellation update
       setAppointments((prev) =>
         prev.map((a) => (a.id === cancelModalAppt.id ? { ...a, status: 'cancelled' } : a))
       );
@@ -377,21 +378,19 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     setRescheduleError(null);
 
     try {
-      const headers = getAuthHeaders();
-      const response = await fetch(`/api/client/appointments/${rescheduleModalAppt.id}/reschedule`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          appointmentId: rescheduleModalAppt.id,
-          newDate: newRescheduleDate,
-          newStartTime: selectedRescheduleSlot.startTimeStr,
-          newEndTime: selectedRescheduleSlot.endTimeStr,
-        }),
-      });
+      if (isSupabaseConfigured) {
+        const { error } = await supabase
+          .from('appointments')
+          .update({
+            appointment_date: newRescheduleDate,
+            start_time: selectedRescheduleSlot.startTimeStr,
+            end_time: selectedRescheduleSlot.endTimeStr,
+          })
+          .eq('id', rescheduleModalAppt.id);
 
-      const res = await response.json();
-      if (!response.ok) {
-        throw new Error(res.error || 'Rescheduling failed.');
+        if (error) {
+          throw new Error(error.message);
+        }
       }
 
       setRescheduleSuccess(true);
@@ -415,6 +414,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
         setRescheduleSuccess(false);
       }, 1200);
     } catch (err: any) {
+      console.warn("Reschedule failed:", err);
       // Local optimistic reschedule fallback
       setAppointments((prev) =>
         prev.map((a) =>
