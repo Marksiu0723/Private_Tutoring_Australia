@@ -283,6 +283,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setAdminAppointmentsLoading(false);
             return;
           }
+        } else {
+           console.warn('Backend API returned non-OK status:', response.status);
+           if (response.status === 401) {
+              setAdminAppointmentsLoading(false);
+              return;
+           }
         }
       } catch (apiErr) {
         console.warn('API fetch for admin appointments failed, falling back to direct query:', apiErr);
