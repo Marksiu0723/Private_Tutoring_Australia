@@ -118,7 +118,7 @@ export const translations = {
     zh: '专属单课时辅导体系 • 可预约1次独立课时，或预约10次课时享受规律排课。学员中心支持随时自主改期。',
   },
   'packages.single.title': { en: 'Book 1 Session', zh: '预约 1 次课时' },
-  'packages.single.subtitle': { en: '1 individual 60-min lesson • Ideal for targeted exam review, assessment prep, or single topic deep dive', zh: '1节专属60分钟课时 • 适合考前突击答疑、阶段测验或难点单项精讲' },
+  'packages.single.subtitle': { en: '1 individual lesson • Ideal for targeted exam review, assessment prep, or single topic deep dive', zh: '1节专属一对一私教课 • 适合考前突击答疑、阶段测验或难点单项精讲' },
   'packages.10pack.title': { en: 'Book 10 Sessions', zh: '预约 10 次课时' },
   'packages.10pack.subtitle': { en: '10 lessons with recurring options in all available dates • Term foundation & sustained syllabus mastery', zh: '10节系统课时，支持在所有可用日期设置排课 • 学期基础夯实与大纲深度突破' },
   'packages.10pack.recurrenceBadge': { en: 'Recurring Options in All Available Dates', zh: '全可用日期灵活规律排课' },
@@ -392,8 +392,8 @@ export const translations = {
   'packages.recurringCadence': { en: 'Recurring Cadence', zh: '规律学习排课' },
   'packages.oneTimeSession': { en: 'One-Time Session', zh: '单次课时' },
   'packages.audEst': { en: 'AUD est.', zh: '澳元预估' },
-  'packages.perLesson': { en: 'per 60-min lesson', zh: '每60分钟课时' },
-  'packages.lessonsUnit': { en: '60-min 1-on-1 private lessons', zh: '节 60分钟一对一私教课' },
+  'packages.perLesson': { en: 'per lesson', zh: '每课时' },
+  'packages.lessonsUnit': { en: '1-on-1 private lessons', zh: '一对一私教课' },
   'packages.10packHighlight': {
     en: 'Recurring options in all available dates (Weekly, Fortnightly, or Custom)',
     zh: '支持在所有可用日期设置排课（每周、双周或自由挑选）',
@@ -403,8 +403,8 @@ export const translations = {
     zh: '针对性单项评估与难点考点深度攻坚',
   },
   'packages.sevenDaysAvailability': {
-    en: '7 Days a week availability (9:00 AM – 9:00 PM)',
-    zh: '每周7天均可排课（上午9:00至晚上9:00）',
+    en: 'Flexible availability',
+    zh: '灵活的授课时间',
   },
   'packages.changePortalAnytime': {
     en: 'Change dates anytime in your Client Portal',

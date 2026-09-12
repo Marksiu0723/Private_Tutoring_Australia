@@ -359,10 +359,12 @@ app.delete('/api/client/account', async (req: Request, res: Response): Promise<v
 
 // 5. Admin Appointments (Secure: verifies admin email via JWT before fetching ALL appointments)
 app.get('/api/admin/appointments', async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   try {
     const userEmail = await getVerifiedUserEmail(req);
-    // Simple admin check: Only the owner email can access this route
-    if (!userEmail || userEmail.toLowerCase() !== 'shanon.lcm@gmail.com') {
+    // Simple admin check
+    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com', 'markhwsiu@gmail.com'];
+    if (!userEmail || !ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
       res.status(401).json({ error: 'Unauthorized. Admin access required.' });
       return;
     }

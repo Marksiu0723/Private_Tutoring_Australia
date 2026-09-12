@@ -170,10 +170,10 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         d.setDate(baseDate.getDate() + i * 7);
       }
 
-      // Default time: 10:00 AM (09:00 - 21:00 schedule)
+      // Default time: Empty, require user to select
       const dateStr = formatDateToYMD(d);
-      const startTimeStr = '10:00';
-      const endTimeStr = addMinutesToTime(startTimeStr, selectedService.duration_minutes);
+      const startTimeStr = '';
+      const endTimeStr = '';
 
       newOccurrences.push({
         index: i,
@@ -224,7 +224,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
     return generateAvailableSlots({
       date: parseYMDToDate(currentOccurrence.dateStr),
-      serviceDurationMinutes: selectedService.duration_minutes,
+      serviceDurationMinutes: currentOccurrence.duration_minutes || selectedService.duration_minutes,
       businessHours,
       blockedDates,
       existingAppointments: adminAppointments,
@@ -232,6 +232,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     });
   }, [
     currentOccurrence?.dateStr,
+    currentOccurrence?.duration_minutes,
     selectedService.duration_minutes,
     businessHours,
     blockedDates,
@@ -258,7 +259,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     const validated = updated.map((occ) => {
       const val = validateOccurrenceSlot({
         occurrence: occ,
-        serviceDurationMinutes: selectedService.duration_minutes,
+        serviceDurationMinutes: occ.duration_minutes || selectedService.duration_minutes,
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
@@ -291,7 +292,41 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     const validated = updated.map((occ) => {
       const val = validateOccurrenceSlot({
         occurrence: occ,
-        serviceDurationMinutes: selectedService.duration_minutes,
+        serviceDurationMinutes: occ.duration_minutes || selectedService.duration_minutes,
+        businessHours,
+        blockedDates,
+        existingAppointments: adminAppointments,
+        bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+        otherSelectedOccurrences: updated,
+      });
+      return {
+        ...occ,
+        isValid: val.isValid,
+        conflictReason: val.reason,
+      };
+    });
+
+    setOccurrences(validated);
+  };
+
+  // Handle duration change for current occurrence
+  const handleDurationChange = (newDuration: number) => {
+    const updated = occurrences.map((occ, idx) => {
+      if (idx === activeOccurrenceIdx) {
+        return {
+          ...occ,
+          duration_minutes: newDuration,
+          endTimeStr: occ.startTimeStr ? addMinutesToTime(occ.startTimeStr, newDuration) : occ.endTimeStr,
+        };
+      }
+      return occ;
+    });
+
+    // Re-validate all
+    const validated = updated.map((occ) => {
+      const val = validateOccurrenceSlot({
+        occurrence: occ,
+        serviceDurationMinutes: occ.duration_minutes || selectedService.duration_minutes,
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
@@ -483,8 +518,8 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {PACKAGES.map((pkg) => {
+              <div className={`grid grid-cols-1 ${initialPackageId ? '' : 'sm:grid-cols-2'} gap-4`}>
+                {PACKAGES.filter((p) => initialPackageId ? p.id === initialPackageId : true).map((pkg) => {
                   const isTenPack = pkg.id === '10-pack';
                   return (
                     <div
@@ -647,9 +682,6 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                   <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
                     {t('booking.step4')}: {t('booking.step4Times')}
                   </h3>
-                  <p className="text-xs text-[#8C867A] dark:text-[#A6A295]">
-                    {t('booking.operatingNotice')}
-                  </p>
                 </div>
 
                 {targetSessions > 1 && (
@@ -671,15 +703,17 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                           ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714] shadow-xs'
                           : occ.isValid
                           ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] hover:bg-[#D1C9BC] dark:hover:bg-[#313126]'
+                          : !occ.startTimeStr
+                          ? 'bg-gray-100 dark:bg-[#2A2A22] text-[#8C867A] dark:text-[#A6A295] border border-[#E8E4D9] dark:border-[#33332A]'
                           : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
                       }`}
                     >
-                      <span>{t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}</span>
+                      <span>{t('booking.lessonLabel')} {idx + 1}</span>
                       {occ.isValid ? (
                         <Check className="w-3 h-3 text-current" />
-                      ) : (
+                      ) : occ.startTimeStr ? (
                         <AlertCircle className="w-3 h-3 text-red-500" />
-                      )}
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -692,9 +726,18 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                     {t('booking.configuringLesson').replace('{cur}', String(activeOccurrenceIdx + 1)).replace('{total}', String(targetSessions))}
                   </span>
                   {currentOccurrence && (
-                    <span className="text-xs font-medium text-[#8C867A] dark:text-[#A6A295]">
-                      {t('booking.duration')} {selectedService.duration_minutes} min
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-[#8C867A] dark:text-[#A6A295]">{t('booking.duration')}</label>
+                      <select
+                        value={currentOccurrence.duration_minutes || selectedService.duration_minutes}
+                        onChange={(e) => handleDurationChange(Number(e.target.value))}
+                        className="text-xs bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] text-[#2D2C27] dark:text-[#EDEAE1]"
+                      >
+                        <option value={60}>1 hr</option>
+                        <option value={90}>1.5 hrs</option>
+                        <option value={120}>2 hrs</option>
+                      </select>
+                    </div>
                   )}
                 </div>
 
@@ -778,7 +821,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                       }`}
                     >
                       <span>
-                        {t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}: {occ.dateStr}
+                        {t('booking.lessonLabel')} {idx + 1}: {occ.dateStr}
                       </span>
                       <span className={occ.isValid ? 'text-[#5A5A40] dark:text-[#C6D4AB] font-semibold' : 'text-red-600 dark:text-red-400 font-bold'}>
                         {occ.startTimeStr ? formatTime12h(occ.startTimeStr) : t('booking.pickSlot')}
@@ -907,7 +950,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                     {occurrences.map((o, idx) => (
                       <div key={idx} className="flex justify-between py-0.5">
                         <span className="font-medium text-[#4A4A40] dark:text-[#EDEAE1]">
-                          {t('booking.lessonLabel')} {idx + 1} {t('booking.lessonSuffix')}: {o.dateStr}
+                          {t('booking.lessonLabel')} {idx + 1}: {o.dateStr}
                         </span>
                         <span className="text-[#5A5A40] dark:text-[#C6D4AB] font-semibold">
                           {formatTime12h(o.startTimeStr)} – {formatTime12h(o.endTimeStr)}
@@ -991,7 +1034,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                   </span>
                   {confirmedData.occurrences.map((occ: any, i: number) => (
                     <div key={i} className="flex justify-between text-[#4A4A40] dark:text-[#EDEAE1] py-0.5">
-                      <span>{t('booking.lessonLabel')} {i + 1} {t('booking.lessonSuffix')}: {occ.dateStr}</span>
+                      <span>{t('booking.lessonLabel')} {i + 1}: {occ.dateStr}</span>
                       <span className="font-semibold text-[#5A5A40] dark:text-[#C6D4AB]">
                         {formatTime12h(occ.startTimeStr)}
                       </span>

@@ -162,9 +162,7 @@ export const PackagesSection: React.FC<PackagesSectionProps> = ({ onSelectPackag
                         }`}
                       />
                       <span className={pkg.isPopular ? 'text-[#F5F2ED]' : 'text-[#4A4A40] dark:text-[#EDEAE1]'}>
-                        {language === 'zh'
-                          ? `${pkg.sessions} ${t('packages.lessonsUnit')}`
-                          : `${pkg.sessions}x ${t('packages.lessonsUnit')}`}
+                        {t('packages.lessonsUnit')}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">

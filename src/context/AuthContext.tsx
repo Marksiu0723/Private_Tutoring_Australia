@@ -15,7 +15,7 @@ interface AuthContextType {
   loading: boolean;
   adminCheckLoading: boolean;
   adminError: string | null;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string, context?: 'admin' | 'client') => Promise<{ success: boolean; error?: string }>;
   signUp: (
     email: string,
     password: string,
@@ -32,7 +32,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
+const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com', 'markhwsiu@gmail.com'];
 
 // Helper to construct a valid Session token for preview / offline sessions
 function createMockSession(mockUser: any): Session {
@@ -224,24 +224,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [checkAdminStatus, loginAsDemoAdmin]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, context?: 'admin' | 'client') => {
     setAdminError(null);
     const trimmedEmail = email.trim().toLowerCase();
+    const isOwnerEmail = ADMIN_EMAILS.includes(trimmedEmail);
+
+    if (context === 'client' && isOwnerEmail) {
+      return { success: false, error: 'Admin emails cannot be used to log into the client portal.' };
+    }
+    if (context === 'admin' && !isOwnerEmail) {
+      return { success: false, error: 'Only authorized administrator emails can access the admin dashboard.' };
+    }
 
     // If Supabase credentials are not yet configured or placeholder, offer smooth preview sign-in
     if (!isSupabaseConfigured) {
-      const isOwner = ADMIN_EMAILS.includes(trimmedEmail);
       const mockUser: any = {
-        id: isOwner ? 'admin-shanon-lee' : `user-${Date.now()}`,
+        id: isOwnerEmail ? 'admin-shanon-lee' : `user-${Date.now()}`,
         email: trimmedEmail,
-        user_metadata: { full_name: isOwner ? 'Shanon Lee (Admin)' : trimmedEmail.split('@')[0] },
+        user_metadata: { full_name: isOwnerEmail ? 'Shanon Lee (Admin)' : trimmedEmail.split('@')[0] },
         aud: 'authenticated',
         created_at: new Date().toISOString(),
       };
       setUser(mockUser);
       setSession(createMockSession(mockUser));
-      setIsAdmin(isOwner);
-      if (isOwner) {
+      setIsAdmin(isOwnerEmail);
+      if (isOwnerEmail) {
         localStorage.setItem('shanon_demo_admin', 'true');
       }
       return { success: true };

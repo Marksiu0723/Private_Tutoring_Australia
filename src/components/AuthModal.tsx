@@ -69,7 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     if (mode === 'signin') {
-      const res = await signIn(email, password);
+      const res = await signIn(email, password, 'client');
       setLoading(false);
       if (res.success) {
         onClose();

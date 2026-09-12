@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigateHome,
 }) => {
   const { language, setLanguage, t } = useLanguage();
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const { businessSettings } = useData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -167,21 +167,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="flex items-center gap-1.5">
                   <button
                     id="nav-client-portal-btn"
-                    onClick={onOpenClientPortal}
+                    onClick={isAdmin ? onOpenAdmin : onOpenClientPortal}
                     className={`h-10 min-h-[40px] max-h-[40px] px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold rounded-full border transition-all cursor-pointer box-border shrink-0 ${
-                      currentView === 'client-portal' || currentView === 'portal'
+                      currentView === 'client-portal' || currentView === 'portal' || currentView === 'admin-dashboard'
                         ? 'bg-[#5A5A40] text-white dark:bg-[#A3B18A] dark:text-[#171714] border-[#5A5A40]'
                         : 'text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] hover:bg-[#F5F2ED] dark:hover:bg-[#24241E] border-[#E8E4D9] dark:border-[#313128]'
                     }`}
                   >
                     <User className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
                     <span className="max-w-[100px] truncate">
-                      {user.email?.split('@')[0] || t('nav.clientPortal')}
+                      {isAdmin ? 'Admin' : (user.email?.split('@')[0] || t('nav.clientPortal'))}
                     </span>
                   </button>
                   <button
                     id="nav-sign-out-btn"
-                    onClick={() => signOut()}
+                    onClick={() => { signOut(); onNavigateHome(); }}
                     title={t('nav.signOut')}
                     className="h-10 w-10 min-h-[40px] max-h-[40px] inline-flex items-center justify-center text-[#8C867A] dark:text-[#A6A295] hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full border border-[#E8E4D9] dark:border-[#313128] transition-colors cursor-pointer shrink-0"
                   >
@@ -243,12 +243,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => {
               setMobileMenuOpen(false);
-              onOpenClientPortal();
+              isAdmin ? onOpenAdmin() : onOpenClientPortal();
             }}
             className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
           >
             <User className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A]" />
-            <span>{t('nav.clientPortal')}</span>
+            <span>{isAdmin ? 'Admin Portal' : t('nav.clientPortal')}</span>
           </button>
 
           {/* Book Button in Mobile Drawer */}

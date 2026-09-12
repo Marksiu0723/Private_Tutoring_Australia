@@ -137,6 +137,7 @@ interface DataContextType {
   removeBlockedDate: (id: string, blocked_date?: string) => Promise<{ success: boolean; error?: string }>;
   updateBusinessSettings: (data: Partial<BusinessSettings>) => Promise<{ success: boolean; error?: string }>;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<{ success: boolean; error?: string }>;
+  updateAppointmentZoomLink: (id: string, zoom_link: string) => Promise<{ success: boolean; error?: string }>;
   addAdminAppointment: (data: Omit<Appointment, 'id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
   fetchAdminAppointments: () => Promise<void>;
 }
@@ -271,7 +272,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const response = await fetch('/api/admin/appointments', {
-          headers
+          headers,
+          cache: 'no-store'
         });
 
         if (response.ok) {
@@ -738,6 +740,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const updateAppointmentZoomLink = async (
+    id: string,
+    zoom_link: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from('appointments')
+          .update({ zoom_link })
+          .eq('id', id);
+        if (error) {
+          console.error('Error updating zoom link:', error);
+          return { success: false, error: error.message };
+        }
+        await fetchAdminAppointments();
+        return { success: true };
+      } catch (err: any) {
+        console.error('Exception updating zoom link:', err);
+        return { success: false, error: err.message || 'Failed to update zoom link' };
+      }
+    }
+
+    setAdminAppointments((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, zoom_link } : a))
+    );
+    return { success: true };
+  };
+
   const addAdminAppointment = async (
     data: Omit<Appointment, 'id' | 'created_at'>
   ): Promise<{ success: boolean; error?: string }> => {
@@ -804,6 +834,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeBlockedDate,
         updateBusinessSettings,
         updateAppointmentStatus,
+        updateAppointmentZoomLink,
         addAdminAppointment,
         fetchAdminAppointments,
       }}

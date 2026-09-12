@@ -90,6 +90,7 @@ export interface OccurrenceSlot {
   dateStr: string; // YYYY-MM-DD
   startTimeStr: string; // HH:MM
   endTimeStr: string; // HH:MM
+  duration_minutes?: number; // Override duration for this specific slot
   label?: string;
   isValid: boolean;
   conflictReason?: string;

@@ -65,6 +65,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     removeBlockedDate,
     updateBusinessSettings,
     updateAppointmentStatus,
+    updateAppointmentZoomLink,
     addAdminAppointment,
     fetchAdminAppointments,
   } = useData();
@@ -85,6 +86,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [dateFilter, setDateFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [updatingApptId, setUpdatingApptId] = useState<string | null>(null);
+  
+  // Zoom Link editing modal
+  const [zoomLinkModalOpen, setZoomLinkModalOpen] = useState(false);
+  const [zoomLinkApptId, setZoomLinkApptId] = useState<string | null>(null);
+  const [zoomLinkValue, setZoomLinkValue] = useState('');
 
   // Service modal editing
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -234,7 +240,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     setLoginLoading(true);
     setLoginError(null);
 
-    const res = await signIn(adminEmail, adminPassword);
+    const res = await signIn(adminEmail, adminPassword, 'admin');
     setLoginLoading(false);
 
     if (!res.success) {
@@ -412,7 +418,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
           <div className="flex flex-col gap-2.5 pt-2">
             <div className="flex gap-3 justify-center">
               <button
-                onClick={() => signOut()}
+                onClick={() => { signOut(); onBackToSite(); }}
                 className="px-5 py-2.5 text-xs uppercase tracking-wider font-semibold bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714] rounded-full cursor-pointer min-h-[44px]"
               >
                 Sign In with Different Account
@@ -483,6 +489,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     setUpdatingApptId(null);
     if (!res.success) {
       alert(res.error || 'Failed to update appointment status');
+    }
+  };
+
+  const handleOpenZoomLinkModal = (apptId: string, currentLink: string | null) => {
+    setZoomLinkApptId(apptId);
+    setZoomLinkValue(currentLink || '');
+    setZoomLinkModalOpen(true);
+  };
+
+  const handleSaveZoomLink = async () => {
+    if (!zoomLinkApptId) return;
+    setUpdatingApptId(zoomLinkApptId);
+    setZoomLinkModalOpen(false);
+    const res = await updateAppointmentZoomLink(zoomLinkApptId, zoomLinkValue.trim());
+    setUpdatingApptId(null);
+    if (!res.success) {
+      alert(res.error || 'Failed to update Zoom link');
     }
   };
 
@@ -672,7 +695,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               Website
             </button>
             <button
-              onClick={() => signOut()}
+              onClick={() => { signOut(); onBackToSite(); }}
               title="Sign Out"
               className="p-2 text-red-300 hover:text-red-200 hover:bg-red-950/40 rounded-full transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
             >
@@ -822,7 +845,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             ← Return to Website
           </button>
           <button
-            onClick={() => signOut()}
+            onClick={() => { signOut(); onBackToSite(); }}
             className="w-full text-left px-3 py-2 text-xs font-semibold text-red-300 hover:text-red-200 hover:bg-red-950/40 rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -1063,7 +1086,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </p>
               ) : (
                 <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
-                  {adminAppointments.slice(0, 5).map((appt) => (
+                  {[...adminAppointments].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5).map((appt) => (
                     <div key={appt.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
@@ -1328,6 +1351,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                               </span>
                             </td>
                             <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
+                              <button
+                                onClick={() => handleOpenZoomLinkModal(appt.id, appt.zoom_link || null)}
+                                className="px-2.5 py-1 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] hover:bg-[#F5F2ED] dark:hover:bg-[#2E2E24] rounded-lg text-[11px] font-semibold text-[#5A5A40] dark:text-[#A3B18A] transition-colors inline-flex items-center gap-1"
+                                title="Edit Zoom Link"
+                              >
+                                <Video className="w-3 h-3" />
+                                Edit Zoom
+                              </button>
                               {/* Direct Status Selector */}
                               <select
                                 disabled={isUpdating}
@@ -2288,6 +2319,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 className="px-6 py-2.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white rounded-full font-semibold uppercase tracking-widest text-[11px] shadow-xs cursor-pointer min-h-[36px]"
               >
                 {deleteLoading ? 'Deleting...' : 'Delete Service'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ZOOM LINK MODAL */}
+      {zoomLinkModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[32px] p-6 sm:p-8 max-w-md w-full border border-[#E8E4D9] dark:border-[#2E2E24] shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
+              <h3 className="text-lg font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">
+                Edit Zoom Link
+              </h3>
+              <button
+                onClick={() => setZoomLinkModalOpen(false)}
+                className="p-1.5 rounded-full text-[#8C867A] dark:text-[#A6A295] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] hover:bg-[#E8E4D9] dark:hover:bg-[#25251E] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6658] dark:text-[#A6A295] mb-2 uppercase tracking-wider">
+                  Custom Meeting URL
+                </label>
+                <input
+                  type="url"
+                  value={zoomLinkValue}
+                  onChange={(e) => setZoomLinkValue(e.target.value)}
+                  placeholder="https://zoom.us/j/..."
+                  className="w-full px-4 py-3 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm focus:ring-2 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:outline-none text-[#2D2C27] dark:text-[#EDEAE1]"
+                />
+                <p className="text-[10px] text-[#8C867A] dark:text-[#7A766A] mt-2 leading-relaxed">
+                  Provide a unique link for this specific booking. If left blank, the client will see your default Zoom link.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-4">
+              <button
+                onClick={() => setZoomLinkModalOpen(false)}
+                className="px-5 py-2 text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9] dark:hover:bg-[#25251E] rounded-full font-semibold uppercase tracking-wider text-[11px] cursor-pointer min-h-[36px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveZoomLink}
+                disabled={updatingApptId === zoomLinkApptId}
+                className="px-6 py-2.5 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] disabled:opacity-50 text-white rounded-full font-semibold uppercase tracking-widest text-[11px] shadow-xs flex items-center gap-2 cursor-pointer min-h-[36px]"
+              >
+                {updatingApptId === zoomLinkApptId && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Save Link
               </button>
             </div>
           </div>

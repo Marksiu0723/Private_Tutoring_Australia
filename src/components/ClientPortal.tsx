@@ -70,6 +70,9 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
         // ignore
       }
     }
+    if (isSupabaseConfigured) {
+      return [];
+    }
     return [
       {
         id: 'up-demo-1',
@@ -496,7 +499,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     setAuthFormLoading(true);
     setAuthFormError(null);
     try {
-      const res = await signIn(authEmailInput, authPasswordInput || 'StudentPassword123!');
+      const res = await signIn(authEmailInput, authPasswordInput || 'StudentPassword123!', 'client');
       if (!res.success) {
         setAuthFormError(res.error || (language === 'zh' ? '登录失败，请重试' : 'Failed to sign in. Please try again.'));
       }
@@ -550,34 +553,38 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
             </div>
 
             {/* Quick Demo Student Button */}
-            <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-[#282822] border border-[#E8E4D9] dark:border-[#38382E] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-left w-full sm:w-auto">
-                <div className="text-xs font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                  {language === 'zh' ? '快捷体验演示学员' : 'Quick Preview Student'}
+            {!isSupabaseConfigured && (
+              <>
+                <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-[#282822] border border-[#E8E4D9] dark:border-[#38382E] flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-left w-full sm:w-auto">
+                    <div className="text-xs font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                      {language === 'zh' ? '快捷体验演示学员' : 'Quick Preview Student'}
+                    </div>
+                    <div className="text-[11px] text-[#6B6658] dark:text-[#A6A295]">
+                      Jessica Chen (Year 11 Chemistry)
+                    </div>
+                  </div>
+                  <button
+                    id="portal-demo-student-login-btn"
+                    type="button"
+                    onClick={() => loginAsDemoClient('jessica.chen@example.com')}
+                    className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold tracking-wider uppercase text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full transition-all shadow-xs cursor-pointer min-h-[44px] whitespace-nowrap"
+                  >
+                    {language === 'zh' ? '以学员身份进入' : 'Explore as Student'}
+                  </button>
                 </div>
-                <div className="text-[11px] text-[#6B6658] dark:text-[#A6A295]">
-                  Jessica Chen (Year 11 Chemistry)
-                </div>
-              </div>
-              <button
-                id="portal-demo-student-login-btn"
-                type="button"
-                onClick={() => loginAsDemoClient('jessica.chen@example.com')}
-                className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold tracking-wider uppercase text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full transition-all shadow-xs cursor-pointer min-h-[44px] whitespace-nowrap"
-              >
-                {language === 'zh' ? '以学员身份进入' : 'Explore as Student'}
-              </button>
-            </div>
 
-            {/* Divider */}
-            <div className="relative flex items-center justify-center my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#E8E4D9] dark:border-[#38382E]" />
-              </div>
-              <span className="relative px-3 bg-[#F5F2ED] dark:bg-[#20201A] text-[11px] uppercase tracking-wider text-[#8C867A] dark:text-[#7A776D]">
-                {language === 'zh' ? '或使用邮箱登录' : 'Or sign in with email'}
-              </span>
-            </div>
+                {/* Divider */}
+                <div className="relative flex items-center justify-center my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-[#E8E4D9] dark:border-[#38382E]" />
+                  </div>
+                  <span className="relative px-3 bg-[#F5F2ED] dark:bg-[#20201A] text-[11px] uppercase tracking-wider text-[#8C867A] dark:text-[#7A776D]">
+                    {language === 'zh' ? '或使用邮箱登录' : 'Or sign in with email'}
+                  </span>
+                </div>
+              </>
+            )}
 
             {authFormError && (
               <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300">
