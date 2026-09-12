@@ -144,11 +144,11 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
-  const [businessHours, setBusinessHours] = useState<BusinessHour[]>(DEFAULT_BUSINESS_HOURS);
+  const [services, setServices] = useState<Service[]>(isSupabaseConfigured ? [] : DEFAULT_SERVICES);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>(isSupabaseConfigured ? [] : DEFAULT_BUSINESS_HOURS);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings>(DEFAULT_SETTINGS);
-  const [adminAppointments, setAdminAppointments] = useState<Appointment[]>(INITIAL_DEMO_APPOINTMENTS);
+  const [adminAppointments, setAdminAppointments] = useState<Appointment[]>(isSupabaseConfigured ? [] : INITIAL_DEMO_APPOINTMENTS);
   const [loading, setLoading] = useState<boolean>(true);
   const [adminAppointmentsLoading, setAdminAppointmentsLoading] = useState<boolean>(false);
   const [settingsTableName, setSettingsTableName] = useState<string>('business_settings');
@@ -284,6 +284,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loadPublicData();
   }, [loadPublicData]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchAdminAppointments();
+    }
+  }, [fetchAdminAppointments]);
 
   // PUBLIC APPOINTMENT CREATION
   // Important Rule:
