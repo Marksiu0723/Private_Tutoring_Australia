@@ -869,7 +869,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </p>
               </div>
               <span className="text-[10px] uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#E8E4D9] dark:bg-[#25251E] px-4 py-1.5 rounded-full border border-[#D1C9BC] dark:border-[#38382E] self-start sm:self-auto">
-                Operating 7 Days • 09:00–21:00
+                Operating 09:00–21:00
               </span>
             </div>
 
@@ -1584,7 +1584,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   {t('admin.businessHours')}
                 </h1>
                 <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
-                  Standard tutoring availability (09:00–21:00 across all 7 days). Updates persist directly to Supabase.
+                  Standard tutoring availability (09:00–21:00). Updates persist directly to Supabase.
                 </p>
               </div>
 
