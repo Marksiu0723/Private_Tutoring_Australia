@@ -329,6 +329,79 @@ const handleRescheduleAppointment = async (req: Request, res: Response): Promise
 app.post('/api/client/reschedule', handleRescheduleAppointment);
 app.post('/api/client/appointments/:id/reschedule', handleRescheduleAppointment);
 
+// Delete User Account
+app.delete('/api/client/account', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Unauthorized. No token provided.' });
+      return;
+    }
+    const token = authHeader.split(' ')[1];
+    if (serverSupabase) {
+      const { data: { user }, error: authErr } = await serverSupabase.auth.getUser(token);
+      if (authErr || !user) {
+        res.status(401).json({ error: 'Unauthorized. Invalid token.' });
+        return;
+      }
+      
+      const { error: deleteErr } = await serverSupabase.auth.admin.deleteUser(user.id);
+      if (deleteErr) {
+        res.status(500).json({ error: deleteErr.message });
+        return;
+      }
+    }
+    res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Admin Appointments (Secure: verifies admin email via JWT before fetching ALL appointments)
+app.get('/api/admin/appointments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userEmail = await getVerifiedUserEmail(req);
+    // Simple admin check: Only the owner email can access this route
+    if (!userEmail || userEmail.toLowerCase() !== 'shanon.lcm@gmail.com') {
+      res.status(401).json({ error: 'Unauthorized. Admin access required.' });
+      return;
+    }
+
+    if (!serverSupabase) {
+      res.json({ appointments: fallbackAppointments });
+      return;
+    }
+
+    const { data: appts, error: apptError } = await serverSupabase
+      .from('appointments')
+      .select('*')
+      .order('appointment_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (apptError) {
+      res.status(500).json({ error: apptError.message });
+      return;
+    }
+
+    let appointments = appts || [];
+    
+    // Fetch services to decorate appointments
+    const { data: services } = await serverSupabase.from('services').select('*');
+    if (services && appointments.length > 0) {
+      const serviceMap = new Map(services.map((s: any) => [s.id, s]));
+      appointments = appointments.map((a: any) => ({
+        ...a,
+        service: serviceMap.get(a.service_id) || null,
+      }));
+    }
+
+    res.json({ appointments });
+  } catch (err: any) {
+    console.error('Admin appointments endpoint exception:', err);
+    res.status(500).json({ error: err.message || 'Internal error' });
+  }
+});
+
 // Vite middleware or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

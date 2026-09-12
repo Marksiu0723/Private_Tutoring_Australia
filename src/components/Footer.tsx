@@ -36,10 +36,6 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onOpenClientPortal 
             <p className="text-sm text-[#D1C9BC] dark:text-[#9E9A8E] leading-relaxed max-w-md font-light">
               {t('footer.tagline')}
             </p>
-            <div className="flex items-center gap-2.5 text-xs text-[#D1C9BC] dark:text-[#9E9A8E] pt-1 font-medium">
-              <Clock className="w-4 h-4 text-[#A89F8D] shrink-0" />
-              <span>{t('footer.hours')}</span>
-            </div>
           </div>
 
           {/* Contact Column */}

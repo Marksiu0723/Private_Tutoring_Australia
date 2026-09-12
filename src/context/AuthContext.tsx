@@ -23,6 +23,8 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
   checkAdminStatus: (userId: string, email?: string) => Promise<boolean>;
   loginAsDemoAdmin: () => void;
   loginAsDemoClient: (email?: string) => void;
@@ -357,6 +359,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updatePassword = async (password: string) => {
+    if (!isSupabaseConfigured) return { success: true };
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update password' };
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!isSupabaseConfigured) {
+      signOut();
+      return { success: true };
+    }
+    try {
+      if (!session?.access_token) throw new Error('No active session found.');
+      const response = await fetch('/api/client/account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      if (response.ok) {
+        await signOut();
+        return { success: true };
+      } else {
+        const result = await response.json();
+        return { success: false, error: result.error || 'Failed to delete account' };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to delete account' };
+    }
+  };
+
   const signOut = async () => {
     try {
       localStorage.removeItem('shanon_demo_admin');
@@ -384,6 +422,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signOut,
         resetPassword,
+        updatePassword,
+        deleteAccount,
         checkAdminStatus,
         loginAsDemoAdmin,
         loginAsDemoClient,

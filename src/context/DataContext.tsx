@@ -257,7 +257,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured) return;
     setAdminAppointmentsLoading(true);
     try {
-      // First try joined query
+      // 1. Try to fetch from backend API first to bypass RLS securely
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // Pass auth token and fallback email header
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        if (session?.user?.email) {
+          headers['x-user-email'] = session.user.email;
+        }
+
+        const response = await fetch('/api/admin/appointments', {
+          headers
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.appointments && Array.isArray(result.appointments)) {
+            setAdminAppointments(result.appointments);
+            setAdminAppointmentsLoading(false);
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API fetch for admin appointments failed, falling back to direct query:', apiErr);
+      }
+
+      // 2. Fallback to direct query (might fail due to RLS if no admin policy exists)
       const { data, error } = await supabase
         .from('appointments')
         .select('*')

@@ -191,7 +191,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               ) : (
                 <button
                   id="nav-login-btn"
-                  onClick={handleAuthTrigger}
+                  onClick={onOpenClientPortal}
                   className="h-10 min-h-[40px] max-h-[40px] px-4.5 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] hover:bg-[#F5F2ED] dark:hover:bg-[#24241E] rounded-full border border-[#E8E4D9] dark:border-[#313128] transition-all cursor-pointer box-border shrink-0"
                 >
                   <User className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
@@ -243,13 +243,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => {
               setMobileMenuOpen(false);
-              if (user) onOpenClientPortal();
-              else handleAuthTrigger();
+              onOpenClientPortal();
             }}
             className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
           >
             <User className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A]" />
-            <span>{user ? t('nav.clientPortal') : t('auth.signIn')}</span>
+            <span>{t('nav.clientPortal')}</span>
           </button>
 
           {/* Book Button in Mobile Drawer */}

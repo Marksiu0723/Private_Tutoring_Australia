@@ -31,6 +31,7 @@ import {
   RotateCcw,
   Save,
   Video,
+  Users,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -74,8 +75,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Active sub-page: 'overview' | 'appointments' | 'services' | 'hours' | 'blocked' | 'settings'
-  type AdminTab = 'overview' | 'appointments' | 'services' | 'hours' | 'blocked' | 'settings';
+  // Active sub-page: 'overview' | 'appointments' | 'clients' | 'services' | 'hours' | 'blocked' | 'settings'
+  type AdminTab = 'overview' | 'appointments' | 'clients' | 'services' | 'hours' | 'blocked' | 'settings';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
   // Appointments filtering & search
@@ -183,6 +184,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     });
     setLocalHours(initial);
   }, [businessHours]);
+
+  // Derived clients list
+  type ClientSummary = {
+    email: string;
+    name: string;
+    phone: string;
+    totalBookings: number;
+    confirmedBookings: number;
+    pendingBookings: number;
+    cancelledBookings: number;
+    lastBookingDate: string;
+  };
+
+  const clientsList = React.useMemo(() => {
+    const clientsMap = new Map<string, ClientSummary>();
+    adminAppointments.forEach((appt) => {
+      const email = appt.email.toLowerCase();
+      if (!clientsMap.has(email)) {
+        clientsMap.set(email, {
+          email,
+          name: appt.full_name,
+          phone: appt.phone,
+          totalBookings: 0,
+          confirmedBookings: 0,
+          pendingBookings: 0,
+          cancelledBookings: 0,
+          lastBookingDate: appt.appointment_date,
+        });
+      }
+      const client = clientsMap.get(email)!;
+      client.totalBookings++;
+      if (appt.status === 'confirmed') client.confirmedBookings++;
+      if (appt.status === 'pending') client.pendingBookings++;
+      if (appt.status === 'cancelled') client.cancelledBookings++;
+
+      if (appt.appointment_date > client.lastBookingDate) {
+        client.lastBookingDate = appt.appointment_date;
+        client.name = appt.full_name;
+        client.phone = appt.phone;
+      }
+    });
+    return Array.from(clientsMap.values()).sort((a, b) => b.lastBookingDate.localeCompare(a.lastBookingDate));
+  }, [adminAppointments]);
 
   // Handle Admin direct sign-in form
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -605,6 +649,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     }
   };
 
+  // Derived clients list is now defined near the top of the component to prevent hook order errors
+
   return (
     <div className="min-h-screen bg-[#FDFCF8] dark:bg-[#11110E] text-[#4A4A40] dark:text-[#EDEAE1] flex flex-col md:flex-row transition-colors duration-200">
       {/* Mobile Top Header and Navigation Bar */}
@@ -640,6 +686,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
           {[
             { id: 'overview', label: t('admin.overview'), icon: LayoutDashboard },
             { id: 'appointments', label: t('admin.appointments'), icon: Calendar },
+            { id: 'clients', label: 'Clients', icon: Users },
             { id: 'services', label: t('admin.services'), icon: BookOpen },
             { id: 'hours', label: t('admin.businessHours'), icon: Clock },
             { id: 'blocked', label: t('admin.blockedDates'), icon: CalendarOff },
@@ -702,6 +749,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             >
               <Calendar className="w-4 h-4" />
               <span>{t('admin.appointments')}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('clients')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors cursor-pointer ${
+                activeTab === 'clients'
+                  ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714] shadow-xs'
+                  : 'text-[#D1C9BC] hover:text-white hover:bg-[#33332A]'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Clients</span>
             </button>
 
             <button
@@ -1291,6 +1350,95 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* CLIENTS TAB */}
+        {activeTab === 'clients' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] tracking-tight">
+                  Clients
+                </h1>
+                <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light">
+                  View and manage your clients' account status and booking history.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1E1E19] border border-[#EBE7D9] dark:border-[#36362B] rounded-2xl overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#F8F7F4] dark:bg-[#24241D] border-b border-[#EBE7D9] dark:border-[#36362B] text-[10px] uppercase tracking-wider text-[#8A8575] dark:text-[#A6A295]">
+                      <th className="px-5 py-3 font-semibold">Client Name</th>
+                      <th className="px-5 py-3 font-semibold">Contact Info</th>
+                      <th className="px-5 py-3 font-semibold">Total Bookings</th>
+                      <th className="px-5 py-3 font-semibold">Booking Status</th>
+                      <th className="px-5 py-3 font-semibold">Last Booking</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EBE7D9] dark:divide-[#36362B]">
+                    {clientsList.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#8A8575]">
+                          No clients found.
+                        </td>
+                      </tr>
+                    ) : (
+                      clientsList.map((client) => (
+                        <tr key={client.email} className="hover:bg-[#F8F7F4]/50 dark:hover:bg-[#24241D]/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <span className="text-sm font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                              {client.name}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 space-y-1">
+                            <div className="flex items-center gap-1.5 text-xs text-[#6B6658] dark:text-[#A6A295]">
+                              <Mail className="w-3.5 h-3.5" />
+                              <span>{client.email}</span>
+                            </div>
+                            {client.phone && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-[#8A8575] dark:text-[#8E8B7F]">
+                                <span>📞 {client.phone}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-[#EBE7D9] dark:bg-[#36362B] text-[#4A4A40] dark:text-[#D1C9BC] text-xs font-semibold">
+                              {client.totalBookings} Total
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex flex-wrap gap-2">
+                              {client.confirmedBookings > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400">
+                                  {client.confirmedBookings} Confirmed
+                                </span>
+                              )}
+                              {client.pendingBookings > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                                  {client.pendingBookings} Pending
+                                </span>
+                              )}
+                              {client.cancelledBookings > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400">
+                                  {client.cancelledBookings} Cancelled
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-xs text-[#6B6658] dark:text-[#A6A295]">
+                            {client.lastBookingDate ? new Date(client.lastBookingDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

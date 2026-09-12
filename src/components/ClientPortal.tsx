@@ -39,7 +39,7 @@ interface ClientPortalProps {
 
 export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpenBooking, onOpenAuth }) => {
   const { t, language } = useLanguage();
-  const { user, session, signOut, loginAsDemoClient, signIn } = useAuth();
+  const { user, session, signOut, loginAsDemoClient, signIn, updatePassword, deleteAccount } = useAuth();
   const { businessHours, blockedDates, businessSettings, services, adminAppointments, updateAppointmentStatus } = useData();
 
   const getServiceName = (s?: { name: string; id?: string } | null) => {
@@ -55,7 +55,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     return s.name;
   };
 
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled' | 'uploads' | 'account'>('upcoming');
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'pending' | 'past' | 'cancelled' | 'uploads' | 'account'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -108,6 +108,12 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [copiedZoomId, setCopiedZoomId] = useState<string | null>(null);
+
+  // Account Setting states
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Copy Zoom link helper
   const handleCopyZoom = (id: string, link: string) => {
@@ -187,6 +193,41 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     }
   };
 
+  // Account Settings Handlers
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordMsg({ type: 'error', text: language === 'zh' ? '密码长度至少需6位。' : 'Password must be at least 6 characters.' });
+      return;
+    }
+    setIsUpdatingPassword(true);
+    setPasswordMsg(null);
+    const result = await updatePassword(newPassword);
+    setIsUpdatingPassword(false);
+    if (result.success) {
+      setPasswordMsg({ type: 'success', text: language === 'zh' ? '密码更新成功！' : 'Password updated successfully!' });
+      setNewPassword('');
+    } else {
+      setPasswordMsg({ type: 'error', text: result.error || 'Failed to update password' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmMessage = language === 'zh' 
+      ? '确定要删除此账户吗？此操作不可逆！' 
+      : 'Are you sure you want to delete your account? This action cannot be undone!';
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsDeletingAccount(true);
+    const result = await deleteAccount();
+    if (!result.success) {
+      setIsDeletingAccount(false);
+      alert(result.error);
+    } else {
+      onBackToSite();
+    }
+  };
+
   // Unauthenticated client sign-in state
   const [authEmailInput, setAuthEmailInput] = useState<string>('');
   const [authPasswordInput, setAuthPasswordInput] = useState<string>('');
@@ -227,7 +268,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     };
   }, [session, user]);
 
-  // Load client appointments directly from Supabase (RLS ensures they only see their own)
+  // Load client appointments securely via server-side endpoint with graceful local fallback
   const loadClientAppointments = useCallback(async () => {
     if (!user || !user.email) {
       setLoading(false);
@@ -238,35 +279,33 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     setErrorMsg(null);
 
     try {
-      if (isSupabaseConfigured) {
-        const { data, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .ilike('email', user.email)
-          .order('appointment_date', { ascending: true })
-          .order('start_time', { ascending: true });
+      const headers = getAuthHeaders();
+      const response = await fetch('/api/client/appointments', {
+        headers: {
+          Authorization: headers.Authorization,
+          'x-user-email': headers['x-user-email'],
+        },
+      });
 
-        if (error) {
-          console.error('Error fetching client appointments:', error.message);
-          setAppointments([]);
-        } else if (data) {
-          // Decorate with service relation based on DataContext active services
-          const enriched = data.map((a: Appointment) => ({
-            ...a,
-            service: services.find(s => s.id === a.service_id) || null,
-          }));
-          setAppointments(enriched);
-        }
-      } else {
+      if (!response.ok) {
         setAppointments([]);
+        return;
       }
+
+      const data = await response.json();
+      const loaded = data.appointments || [];
+
+      // We strictly use the loaded database appointments. 
+      // Do not inject demo data when loading via Supabase.
+      setAppointments(loaded);
     } catch (err) {
       console.warn('Appointments fetch failed', err);
+      // Let it remain empty rather than populating demo data
       setAppointments([]);
     } finally {
       setLoading(false);
     }
-  }, [user, services]);
+  }, [user, getAuthHeaders]);
 
   useEffect(() => {
     loadClientAppointments();
@@ -280,6 +319,12 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       .filter((a) => a.status === 'confirmed' && a.appointment_date >= todayStr)
       .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date));
   }, [appointments, todayStr]);
+
+  const pendingList = useMemo(() => {
+    return appointments
+      .filter((a) => a.status === 'pending')
+      .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date));
+  }, [appointments]);
 
   const pastList = useMemo(() => {
     return appointments
@@ -299,16 +344,18 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
     setCancelling(true);
     try {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('appointments')
-          .update({ status: 'cancelled' })
-          .eq('id', cancelModalAppt.id);
+      const headers = getAuthHeaders();
+      const response = await fetch(`/api/client/appointments/${cancelModalAppt.id}/cancel`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          appointmentId: cancelModalAppt.id,
+        }),
+      });
 
-        if (error) {
-          console.error("Cancel via Supabase error:", error);
-          throw error;
-        }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Cancellation failed.');
       }
 
       // Update locally
@@ -378,19 +425,21 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
     setRescheduleError(null);
 
     try {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase
-          .from('appointments')
-          .update({
-            appointment_date: newRescheduleDate,
-            start_time: selectedRescheduleSlot.startTimeStr,
-            end_time: selectedRescheduleSlot.endTimeStr,
-          })
-          .eq('id', rescheduleModalAppt.id);
+      const headers = getAuthHeaders();
+      const response = await fetch(`/api/client/appointments/${rescheduleModalAppt.id}/reschedule`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          appointmentId: rescheduleModalAppt.id,
+          newDate: newRescheduleDate,
+          newStartTime: selectedRescheduleSlot.startTimeStr,
+          newEndTime: selectedRescheduleSlot.endTimeStr,
+        }),
+      });
 
-        if (error) {
-          throw new Error(error.message);
-        }
+      const res = await response.json();
+      if (!response.ok) {
+        throw new Error(res.error || 'Rescheduling failed.');
       }
 
       setRescheduleSuccess(true);
@@ -659,6 +708,16 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
             {t('portal.upcoming')} ({upcomingList.length})
           </button>
           <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-4 sm:px-5 py-2.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
+              activeTab === 'pending'
+                ? 'bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714] shadow-xs'
+                : 'bg-[#F5F2ED] dark:bg-[#20201A] text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9] dark:hover:bg-[#282820] border border-[#E8E4D9] dark:border-[#313128]'
+            }`}
+          >
+            {language === 'zh' ? '待审核' : 'Pending'} ({pendingList.length})
+          </button>
+          <button
             onClick={() => setActiveTab('past')}
             className={`px-4 sm:px-5 py-2.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all cursor-pointer whitespace-nowrap min-h-[44px] ${
               activeTab === 'past'
@@ -837,6 +896,81 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span>{t('portal.cancel')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PENDING TAB */}
+            {activeTab === 'pending' && (
+              <div className="space-y-5">
+                {pendingList.length === 0 ? (
+                  <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-12 text-center border border-[#E8E4D9] dark:border-[#313128] space-y-4">
+                    <Clock className="w-10 h-10 text-[#8C867A] dark:text-[#A6A295] mx-auto" />
+                    <p className="text-[#6B6658] dark:text-[#A6A295] text-sm font-light">
+                      {language === 'zh' ? '您目前没有待审核的课程预约。' : 'You have no pending lessons waiting for confirmation.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {pendingList.map((appt) => {
+                      const service =
+                        appt.service || services.find((s) => s.id === appt.service_id);
+
+                      return (
+                        <div
+                          key={appt.id}
+                          className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#313128] shadow-xs flex flex-col justify-between hover:border-[#5A5A40] dark:hover:border-[#A3B18A] transition-all opacity-85"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-[#E8E4D9] dark:bg-[#282820] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]">
+                                {getServiceName(service)}
+                              </span>
+                              <span className="text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50">
+                                {language === 'zh' ? '待审核' : 'Pending'}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2.5 mt-4">
+                              <div className="flex items-center gap-2.5 text-base font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                                <Calendar className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
+                                <span>{appt.appointment_date}</span>
+                              </div>
+                              <div className="flex items-center gap-2.5 text-sm font-medium text-[#5A5A40] dark:text-[#A3B18A]">
+                                <Clock className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A] shrink-0" />
+                                <span>
+                                  {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                                </span>
+                              </div>
+                              {appt.notes && (
+                                <div className="mt-3 p-3.5 bg-white dark:bg-[#191914] rounded-2xl border border-[#E8E4D9] dark:border-[#313128] text-xs text-[#6B6658] dark:text-[#A6A295]">
+                                  <span className="font-semibold block text-[#2D2C27] dark:text-[#EDEAE1] mb-0.5">
+                                    {t('portal.notesLabel')}
+                                  </span>
+                                  {appt.notes}
+                                </div>
+                              )}
+                              <div className="mt-4 p-3 bg-white/50 dark:bg-[#191914]/50 rounded-xl border border-[#E8E4D9]/50 dark:border-[#313128]/50">
+                                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] text-center">
+                                  {language === 'zh' ? '预约等待老师确认中...' : 'Awaiting confirmation from tutor...'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-6 pt-4 border-t border-[#E8E4D9] dark:border-[#313128] flex items-center justify-end gap-2.5">
+                            <button
+                              onClick={() => setCancelModalAppt(appt)}
+                              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>{language === 'zh' ? '取消预约' : 'Cancel Request'}</span>
                             </button>
                           </div>
                         </div>
@@ -1158,28 +1292,86 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
 
             {/* ACCOUNT TAB */}
             {activeTab === 'account' && (
-              <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-7 border border-[#E8E4D9] dark:border-[#313128] max-w-lg space-y-4">
-                <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                  {t('portal.account')}
-                </h3>
-                <div className="space-y-3.5 text-xs">
-                  <div>
-                    <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
-                      {t('portal.registeredEmail')}
-                    </span>
-                    <span className="text-sm font-medium text-[#2D2C27] dark:text-[#EDEAE1] break-all">{user?.email}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+                <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-7 border border-[#E8E4D9] dark:border-[#313128] space-y-4 h-fit">
+                  <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                    {t('portal.account')}
+                  </h3>
+                  <div className="space-y-3.5 text-xs">
+                    <div>
+                      <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
+                        {t('portal.registeredEmail')}
+                      </span>
+                      <span className="text-sm font-medium text-[#2D2C27] dark:text-[#EDEAE1] break-all">{user?.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">{t('portal.userId')}</span>
+                      <span className="font-mono text-[#4A4A40] dark:text-[#A6A295] break-all">{user?.id}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
+                        {t('portal.accountCreated')}
+                      </span>
+                      <span className="text-[#4A4A40] dark:text-[#EDEAE1]">
+                        {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Active'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">{t('portal.userId')}</span>
-                    <span className="font-mono text-[#4A4A40] dark:text-[#A6A295] break-all">{user?.id}</span>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Change Password */}
+                  <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-7 border border-[#E8E4D9] dark:border-[#313128] space-y-4">
+                    <h3 className="text-lg font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+                      {language === 'zh' ? '修改密码' : 'Change Password'}
+                    </h3>
+                    <form onSubmit={handleUpdatePassword} className="space-y-3">
+                      <div>
+                        <label className="block text-[#8C867A] dark:text-[#A6A295] font-semibold uppercase tracking-wider text-[10px] mb-1.5">
+                          {language === 'zh' ? '新密码' : 'New Password'}
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-[#282822] border border-[#E8E4D9] dark:border-[#38382E] text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:outline-hidden focus:ring-2 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] transition-all min-h-[44px]"
+                        />
+                      </div>
+                      
+                      {passwordMsg && (
+                        <div className={`text-xs p-3 rounded-lg ${passwordMsg.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                          {passwordMsg.text}
+                        </div>
+                      )}
+                      
+                      <button
+                        type="submit"
+                        disabled={isUpdatingPassword}
+                        className="w-full py-2.5 px-6 text-xs font-semibold uppercase tracking-widest text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full transition-all shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isUpdatingPassword ? <RefreshCw className="w-4 h-4 animate-spin" /> : (language === 'zh' ? '更新密码' : 'Update Password')}
+                      </button>
+                    </form>
                   </div>
-                  <div>
-                    <span className="text-[#8C867A] dark:text-[#A6A295] block font-semibold uppercase tracking-wider text-[10px]">
-                      {t('portal.accountCreated')}
-                    </span>
-                    <span className="text-[#4A4A40] dark:text-[#EDEAE1]">
-                      {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Active'}
-                    </span>
+
+                  {/* Delete Account */}
+                  <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[28px] p-7 border border-red-200 dark:border-red-900/30 space-y-4">
+                    <h3 className="text-lg font-serif font-semibold text-red-600 dark:text-red-400">
+                      {language === 'zh' ? '删除账户' : 'Delete Account'}
+                    </h3>
+                    <p className="text-xs text-[#6B6658] dark:text-[#A6A295] leading-relaxed">
+                      {language === 'zh' ? '此操作将永久删除您的账户及所有相关数据，且不可恢复。' : 'This will permanently delete your account and all associated data. This action cannot be undone.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeletingAccount}
+                      className="w-full py-2.5 px-6 text-xs font-semibold uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-full transition-all shadow-xs cursor-pointer min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isDeletingAccount ? <RefreshCw className="w-4 h-4 animate-spin" /> : (language === 'zh' ? '永久删除账户' : 'Permanently Delete Account')}
+                    </button>
                   </div>
                 </div>
               </div>
