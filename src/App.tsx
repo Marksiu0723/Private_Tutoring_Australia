@@ -122,33 +122,22 @@ const MainAppContent: React.FC = () => {
   // Route to Client Portal
   const handleOpenClientPortal = () => {
     switchViewWithTransition('client-portal');
-    try {
-      window.history.pushState(null, '', '/portal');
-    } catch {
-      window.location.hash = '#portal';
-    }
+    window.history.pushState(null, '', '#portal');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Route to Admin Dashboard (.../admin)
+  // Route to Admin Dashboard
   const handleOpenAdmin = () => {
     switchViewWithTransition('admin-dashboard');
-    try {
-      window.history.pushState(null, '', '/admin');
-    } catch {
-      window.location.hash = '#admin';
-    }
+    window.history.pushState(null, '', '#admin');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Return to public website
   const handleNavigateHome = () => {
     switchViewWithTransition('landing');
-    try {
-      window.history.pushState(null, '', '/');
-    } catch {
-      window.location.hash = '';
-    }
+    // Remove the hash while preserving the base path
+    window.history.pushState(null, '', window.location.pathname);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
