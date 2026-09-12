@@ -2,6 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+interface SignUpOptions {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -10,16 +16,44 @@ interface AuthContextType {
   adminCheckLoading: boolean;
   adminError: string | null;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+    extra?: SignUpOptions
+  ) => Promise<{ success: boolean; error?: string; confirmationRequired?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   checkAdminStatus: (userId: string, email?: string) => Promise<boolean>;
   loginAsDemoAdmin: () => void;
+  loginAsDemoClient: (email?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
+
+// Helper to construct a valid Session token for preview / offline sessions
+function createMockSession(mockUser: any): Session {
+  const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+  const payload = btoa(
+    JSON.stringify({
+      sub: mockUser.id,
+      email: mockUser.email,
+      role: mockUser.app_metadata?.role || 'authenticated',
+      exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+    })
+  );
+  const token = `${header}.${payload}.mock-signature`;
+
+  return {
+    access_token: token,
+    token_type: 'bearer',
+    expires_in: 86400 * 30,
+    refresh_token: 'mock-refresh-token',
+    user: mockUser,
+    expires_at: Math.floor(Date.now() / 1000) + 86400 * 30,
+  } as unknown as Session;
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -100,9 +134,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       created_at: new Date().toISOString(),
     };
     setUser(mockAdminUser);
+    setSession(createMockSession(mockAdminUser));
     setIsAdmin(true);
     setAdminError(null);
     localStorage.setItem('shanon_demo_admin', 'true');
+  }, []);
+
+  const loginAsDemoClient = useCallback((clientEmail: string = 'jessica.chen@example.com') => {
+    const mockClientUser: any = {
+      id: 'demo-student-jessica',
+      email: clientEmail.toLowerCase().trim(),
+      user_metadata: { full_name: 'Jessica Chen' },
+      app_metadata: { role: 'authenticated' },
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
+    };
+    setUser(mockClientUser);
+    setSession(createMockSession(mockClientUser));
+    setIsAdmin(false);
+    setAdminError(null);
+    localStorage.removeItem('shanon_demo_admin');
   }, []);
 
   useEffect(() => {
@@ -130,8 +181,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (currentSession?.user) {
           await checkAdminStatus(currentSession.user.id, currentSession.user.email);
-        } else if (wasDemoAdmin) {
-          loginAsDemoAdmin();
+        } else {
+          setIsAdmin(false);
+          setAdminError(null);
         }
       } catch (err) {
         console.error('Error initializing auth session:', err);
@@ -157,13 +209,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newSession?.user) {
         await checkAdminStatus(newSession.user.id, newSession.user.email);
       } else {
-        const wasDemoAdmin = localStorage.getItem('shanon_demo_admin') === 'true';
-        if (wasDemoAdmin) {
-          loginAsDemoAdmin();
-        } else {
-          setIsAdmin(false);
-          setAdminError(null);
-        }
+        setIsAdmin(false);
+        setAdminError(null);
       }
 
       setLoading(false);
@@ -190,6 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
       };
       setUser(mockUser);
+      setSession(createMockSession(mockUser));
       setIsAdmin(isOwner);
       if (isOwner) {
         localStorage.setItem('shanon_demo_admin', 'true');
@@ -204,10 +252,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        // If password failed for known admin in preview/testing, provide friendly guidance
-        return { success: false, error: error.message };
+        return { success: false, error: error.message || 'Invalid email or password. Please check your Supabase credentials.' };
       }
 
+      if (data.session) {
+        setSession(data.session);
+      }
       if (data.user) {
         await checkAdminStatus(data.user.id, data.user.email);
       }
@@ -218,27 +268,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, extra?: SignUpOptions) => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const fullName = extra ? `${extra.firstName.trim()} ${extra.lastName.trim()}`.trim() : trimmedEmail.split('@')[0];
+    
+    // Save student profile locally for instant persistence & profile view
+    if (extra) {
+      try {
+        const studentProfile = {
+          firstName: extra.firstName.trim(),
+          lastName: extra.lastName.trim(),
+          email: trimmedEmail,
+          phone: extra.phone.trim(),
+        };
+        localStorage.setItem(`student_profile_${trimmedEmail}`, JSON.stringify(studentProfile));
+      } catch (e) {
+        console.warn('Could not save local student profile:', e);
+      }
+    }
+
     if (!isSupabaseConfigured) {
       const mockUser: any = {
         id: `user-${Date.now()}`,
-        email: email.trim().toLowerCase(),
-        user_metadata: { full_name: email.trim().split('@')[0] },
+        email: trimmedEmail,
+        user_metadata: {
+          full_name: fullName,
+          first_name: extra?.firstName?.trim() || '',
+          last_name: extra?.lastName?.trim() || '',
+          phone: extra?.phone?.trim() || '',
+        },
         aud: 'authenticated',
         created_at: new Date().toISOString(),
       };
       setUser(mockUser);
+      setSession(createMockSession(mockUser));
       return { success: true, confirmationRequired: false };
     }
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: trimmedEmail,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            first_name: extra?.firstName?.trim() || '',
+            last_name: extra?.lastName?.trim() || '',
+            phone: extra?.phone?.trim() || '',
+          },
+        },
       });
 
       if (error) {
         return { success: false, error: error.message };
+      }
+
+      if (data.session) {
+        setSession(data.session);
+      }
+      if (data.user) {
+        setUser(data.user);
       }
 
       const confirmationRequired = !data.session && Boolean(data.user);
@@ -297,6 +386,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPassword,
         checkAdminStatus,
         loginAsDemoAdmin,
+        loginAsDemoClient,
       }}
     >
       {children}

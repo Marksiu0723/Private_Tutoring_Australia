@@ -233,6 +233,16 @@ export const translations = {
   'portal.keepBtn': { en: 'Keep Lesson', zh: '保留课程' },
   'portal.rescheduleTitle': { en: 'Reschedule Lesson', zh: '调整授课时间' },
   'portal.rescheduleSuccess': { en: 'Lesson rescheduled successfully!', zh: '课程时间已成功更新！' },
+  'portal.uploads': { en: 'Uploads & Files', zh: '作业与凭据' },
+  'portal.joinZoom': { en: 'Join Zoom Class', zh: '进入 Zoom 教室' },
+  'portal.zoomLink': { en: 'Classroom Zoom Link', zh: '在线教室链接' },
+  'portal.copyZoom': { en: 'Copy Link', zh: '复制链接' },
+  'portal.copied': { en: 'Copied!', zh: '已复制' },
+  'portal.uploadPayment': { en: 'Upload Payment Proof', zh: '上传支付凭证' },
+  'portal.uploadHomework': { en: 'Upload Homework', zh: '上传课后作业' },
+  'portal.uploadSuccess': { en: 'File uploaded successfully!', zh: '文件上传成功！' },
+  'portal.paymentNotes': { en: 'Receipt number or transfer note (optional)', zh: '转账单号或备注（选填）' },
+  'portal.homeworkNotes': { en: 'Subject, module, or questions for tutor (optional)', zh: '科目、章节或希望老师批改的问题（选填）' },
 
   // Auth
   'auth.signIn': { en: 'Client Sign In', zh: '学员登录' },
@@ -530,6 +540,29 @@ export const translations = {
   'booking.total': { en: 'Total:', zh: '总计：' },
   'portal.errorSelectSlot': { en: 'Please select an available date and time slot.', zh: '请选择可用的日期与时段。' },
   'nav.themeLabel': { en: 'Theme / 浅深色模式', zh: '外观主题 / Theme' },
+
+  // Student Portal Registration & Features
+  'auth.firstName': { en: 'First Name', zh: '名字' },
+  'auth.lastName': { en: 'Last Name', zh: '姓氏' },
+  'auth.phone': { en: 'Phone Number', zh: '联系电话' },
+  'auth.requiredFieldsNotice': { en: 'All fields are required to register', zh: '所有信息均为必填项' },
+  'portal.tab.bookings': { en: 'My Bookings', zh: '我的预约' },
+  'portal.tab.zoom': { en: 'Zoom Classroom', zh: 'Zoom 在线上课' },
+  'portal.tab.homework': { en: 'Homework & Materials', zh: '课后作业与资料' },
+  'portal.tab.payment': { en: 'Upload Payment', zh: '上传支付凭证' },
+  'portal.tab.profile': { en: 'Student Profile', zh: '学生档案' },
+  'portal.uploadProof': { en: 'Upload Payment Proof', zh: '上传付款凭证' },
+  'portal.uploadHomeworkQuestion': { en: 'Submit Homework / Questions', zh: '提交课后作业 / 疑难问题' },
+  'portal.uploadError': { en: 'Failed to upload file. Please try again.', zh: '上传失败，请重试。' },
+  'portal.dragDrop': { en: 'Drag and drop file here, or browse', zh: '拖拽文件至此，或点击浏览' },
+  'portal.maxFileSize': { en: 'Maximum file size: 10MB (PDF, PNG, JPG, DOCX)', zh: '最大支持 10MB (PDF, PNG, JPG, DOCX)' },
+  'portal.homeworkSubject': { en: 'Subject / Topic', zh: '科目 / 知识点' },
+  'portal.noUploadsYet': { en: 'No uploads yet in this section.', zh: '暂无已上传记录。' },
+  'portal.verified': { en: 'Verified', zh: '已确认' },
+  'portal.pendingReview': { en: 'Pending Review', zh: '审核中' },
+  'portal.zoomNotice': { en: 'Your live Zoom classroom link for upcoming tutoring sessions:', zh: '您接下来科学辅导课时的 Zoom 在线教室专属链接：' },
+  'portal.zoomInstructions': { en: 'Please enter the Zoom meeting 3–5 minutes prior to your scheduled lesson time. Have your notebook and calculator ready.', zh: '请在预约上课时间前3–5分钟进入 Zoom 会议室。请提前准备好笔记本与计算器。' },
+  'portal.myLinkedEmail': { en: 'Bookings linked to email:', zh: '已关联预约的学员邮箱：' },
 };
 
 export function getTranslation(key: string, lang: Language): string {

@@ -10,7 +10,7 @@ interface FooterProps {
   onNavigateHome?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = () => {
+export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, onOpenClientPortal }) => {
   const { t } = useLanguage();
   const { businessSettings } = useData();
 
@@ -82,9 +82,27 @@ export const Footer: React.FC<FooterProps> = () => {
           <p>
             © {new Date().getFullYear()} {businessName}. {t('footer.rights')}
           </p>
-          <p className="text-[#8C867A] dark:text-[#6E6A60]">
-            {t('footer.curriculumAligned')}
-          </p>
+          <div className="flex items-center gap-4 text-[11px]">
+            {onOpenClientPortal && (
+              <button
+                onClick={onOpenClientPortal}
+                className="hover:text-white dark:hover:text-[#EDEAE1] transition-colors cursor-pointer"
+              >
+                {t('nav.clientPortal')}
+              </button>
+            )}
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                className="hover:text-white dark:hover:text-[#EDEAE1] transition-colors cursor-pointer"
+              >
+                Admin Portal (/admin)
+              </button>
+            )}
+            <span className="text-[#8C867A] dark:text-[#6E6A60]">
+              {t('footer.curriculumAligned')}
+            </span>
+          </div>
         </div>
       </div>
     </footer>

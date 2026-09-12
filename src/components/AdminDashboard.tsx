@@ -30,6 +30,7 @@ import {
   Check,
   RotateCcw,
   Save,
+  Video,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -45,7 +46,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     adminError,
     signIn,
     signOut,
-    loginAsDemoAdmin,
   } = useAuth();
 
   const {
@@ -117,6 +117,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [newApptStart, setNewApptStart] = useState('16:00');
   const [newApptEnd, setNewApptEnd] = useState('17:00');
   const [newApptNotes, setNewApptNotes] = useState('');
+  const [newApptZoomLink, setNewApptZoomLink] = useState('');
   const [newApptStatus, setNewApptStatus] = useState<AppointmentStatus>('confirmed');
   const [isSubmittingAppt, setIsSubmittingAppt] = useState(false);
 
@@ -132,6 +133,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [settingsAddress, setSettingsAddress] = useState('');
   const [settingsInterval, setSettingsInterval] = useState(30);
   const [settingsNotice, setSettingsNotice] = useState(12);
+  const [settingsDefaultZoom, setSettingsDefaultZoom] = useState('');
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -157,8 +159,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       setSettingsAddress(businessSettings.business_address || '');
       setSettingsInterval(businessSettings.slot_interval_minutes || 30);
       setSettingsNotice(businessSettings.booking_notice_hours || 12);
+      setSettingsDefaultZoom(businessSettings.default_zoom_link || '');
     }
   }, [businessSettings]);
+
+  // Sync business hours to local state for editing
+  useEffect(() => {
+    const days = [0, 1, 2, 3, 4, 5, 6];
+    const initial: BusinessHour[] = days.map((dayIdx) => {
+      const match = businessHours.find((h) => {
+        if (typeof h.weekday === 'number') return h.weekday === dayIdx;
+        const p = parseInt(String(h.weekday), 10);
+        return !isNaN(p) && p === dayIdx;
+      });
+      return (
+        match || {
+          weekday: dayIdx,
+          is_open: true,
+          start_time: '09:00',
+          end_time: '21:00',
+        }
+      );
+    });
+    setLocalHours(initial);
+  }, [businessHours]);
 
   // Handle Admin direct sign-in form
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -191,6 +215,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       end_time: newApptEnd,
       status: newApptStatus,
       notes: newApptNotes.trim() || null,
+      zoom_link: newApptZoomLink.trim() || null,
     });
 
     setIsSubmittingAppt(false);
@@ -199,11 +224,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     setNewApptEmail('');
     setNewApptPhone('');
     setNewApptNotes('');
+    setNewApptZoomLink('');
   };
 
   // Export appointments as CSV
   const handleExportCSV = () => {
-    const headers = ['Client Name', 'Email', 'Phone', 'Service', 'Date', 'Start Time', 'End Time', 'Status', 'Notes'];
+    const headers = ['Client Name', 'Email', 'Phone', 'Service', 'Date', 'Start Time', 'End Time', 'Status', 'Zoom Link', 'Notes'];
     const rows = filteredAppointments.map((a) => [
       `"${(a.full_name || '').replace(/"/g, '""')}"`,
       `"${(a.email || '').replace(/"/g, '""')}"`,
@@ -213,6 +239,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       a.start_time,
       a.end_time,
       a.status,
+      `"${(a.zoom_link || businessSettings.default_zoom_link || '').replace(/"/g, '""')}"`,
       `"${(a.notes || '').replace(/"/g, '""')}"`,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
@@ -239,7 +266,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             </span>
             <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1]">{t('auth.adminSignIn')}</h2>
             <p className="text-xs text-[#6B6658] dark:text-[#A6A295] font-light">
-              Sign in with your verified administrator credentials.
+              Sign in with your verified Supabase administrator account.
             </p>
           </div>
 
@@ -249,32 +276,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               <span>{loginError}</span>
             </div>
           )}
-
-          {/* Quick 1-Click Access for Evaluation / Owner Mode */}
-          <div className="bg-[#E8E4D9]/60 dark:bg-[#25251E] rounded-2xl p-4 border border-[#D1C9BC] dark:border-[#38382E] text-center space-y-2.5">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#5A5A40] dark:text-[#A3B18A]">
-              <Sparkles className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-              <span>Quick Admin Access (Owner & Reviewer Mode)</span>
-            </div>
-            <p className="text-[11px] text-[#6B6658] dark:text-[#A6A295] leading-relaxed">
-              Explore lesson bookings, manage tutoring services, working hours, and settings with instant 1-click access.
-            </p>
-            <button
-              id="admin-quick-access-btn"
-              type="button"
-              onClick={() => loginAsDemoAdmin()}
-              className="w-full py-2.5 px-4 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714] text-xs uppercase tracking-widest font-semibold rounded-full transition-all cursor-pointer shadow-xs min-h-[44px]"
-            >
-              Enter Admin Portal Now
-            </button>
-          </div>
-
-          <div className="relative flex items-center justify-center">
-            <div className="border-t border-[#E8E4D9] dark:border-[#313128] w-full" />
-            <span className="bg-[#F5F2ED] dark:bg-[#1A1A15] px-3 text-[10px] uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] font-semibold">
-              Or Sign In with Credentials
-            </span>
-          </div>
 
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <div>
@@ -365,19 +366,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             User ID: {user.id}
           </div>
           <div className="flex flex-col gap-2.5 pt-2">
-            <button
-              id="admin-grant-access-btn"
-              onClick={() => loginAsDemoAdmin()}
-              className="w-full py-3 text-xs uppercase tracking-wider font-semibold bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714] rounded-full cursor-pointer shadow-xs min-h-[44px]"
-            >
-              Grant Administrator Access (Demo Mode)
-            </button>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => signOut()}
-                className="px-5 py-2.5 text-xs uppercase tracking-wider font-semibold bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full text-[#4A4A40] dark:text-[#EDEAE1] cursor-pointer min-h-[44px]"
+                className="px-5 py-2.5 text-xs uppercase tracking-wider font-semibold bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] text-white dark:text-[#171714] rounded-full cursor-pointer min-h-[44px]"
               >
-                Sign Out
+                Sign In with Different Account
               </button>
               <button
                 onClick={onBackToSite}
@@ -391,27 +385,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       </div>
     );
   }
-
-  // Sync business hours to local state for editing
-  useEffect(() => {
-    const days = [0, 1, 2, 3, 4, 5, 6];
-    const initial: BusinessHour[] = days.map((dayIdx) => {
-      const match = businessHours.find((h) => {
-        if (typeof h.weekday === 'number') return h.weekday === dayIdx;
-        const p = parseInt(String(h.weekday), 10);
-        return !isNaN(p) && p === dayIdx;
-      });
-      return (
-        match || {
-          weekday: dayIdx,
-          is_open: true,
-          start_time: '09:00',
-          end_time: '21:00',
-        }
-      );
-    });
-    setLocalHours(initial);
-  }, [businessHours]);
 
   // Today's date string (YYYY-MM-DD)
   const todayStr = new Date().toISOString().split('T')[0];
@@ -620,6 +593,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       business_address: settingsAddress.trim() ? settingsAddress.trim() : null,
       slot_interval_minutes: Number(settingsInterval) || 30,
       booking_notice_hours: Number(settingsNotice) || 12,
+      default_zoom_link: settingsDefaultZoom.trim() || null,
     });
 
     setSettingsSaving(false);
@@ -1265,7 +1239,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                               <span className="text-[#8C867A] dark:text-[#7A766A]">{appt.phone || '—'}</span>
                             </td>
                             <td className="p-4 text-[#6B6658] dark:text-[#A6A295] max-w-xs truncate" title={appt.notes || undefined}>
-                              {appt.notes || '—'}
+                              <div>{appt.notes || '—'}</div>
+                              {(appt.zoom_link || businessSettings.default_zoom_link) && (
+                                <a
+                                  href={appt.zoom_link || businessSettings.default_zoom_link || '#'}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-[#5A5A40] dark:text-[#A3B18A] hover:underline mt-0.5"
+                                  title={appt.zoom_link || businessSettings.default_zoom_link || ''}
+                                >
+                                  <Video className="w-3 h-3 shrink-0" />
+                                  <span>{appt.zoom_link ? 'Custom Zoom' : 'Default Zoom'}</span>
+                                </a>
+                              )}
                             </td>
                             <td className="p-4">
                               <span
@@ -1710,6 +1696,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 />
               </div>
 
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                  Default Zoom / Virtual Meeting Link (For Online Classes)
+                </label>
+                <div className="relative">
+                  <Video className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3 top-3" />
+                  <input
+                    type="url"
+                    value={settingsDefaultZoom}
+                    onChange={(e) => setSettingsDefaultZoom(e.target.value)}
+                    placeholder="https://zoom.us/j/1234567890?pwd=..."
+                    className="w-full pl-9 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
+                  />
+                </div>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] block mt-1">
+                  This Zoom link is automatically displayed in the Student Portal for confirmed lessons if no session-specific link is assigned.
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
@@ -2026,6 +2031,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                   placeholder="e.g. Preparing for Module 6 HSC Trial exam, kinetics focus..."
                   className="w-full px-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                  Session Zoom / Meeting Link (Optional)
+                </label>
+                <div className="relative">
+                  <Video className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3 top-3" />
+                  <input
+                    id="admin-new-appt-zoom"
+                    type="url"
+                    value={newApptZoomLink}
+                    onChange={(e) => setNewApptZoomLink(e.target.value)}
+                    placeholder={businessSettings.default_zoom_link || "https://zoom.us/j/..."}
+                    className="w-full pl-9 pr-3.5 py-2 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:outline-none text-xs"
+                  />
+                </div>
+                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] block mt-1">
+                  Leave blank to use the business default Zoom link.
+                </span>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E8E4D9] dark:border-[#2E2E24]">

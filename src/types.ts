@@ -21,6 +21,7 @@ export interface Appointment {
   end_time: string; // HH:MM or HH:MM:SS
   status: AppointmentStatus;
   notes: string | null;
+  zoom_link?: string | null;
   created_at?: string;
   // Optional joined data for display:
   service?: Service;
@@ -51,6 +52,7 @@ export interface BusinessSettings {
   phone?: string | null;
   business_address?: string | null;
   address?: string | null;
+  default_zoom_link?: string | null;
   slot_interval_minutes: number;
   booking_notice_hours: number;
   created_at?: string;
@@ -102,4 +104,29 @@ export interface BookingFormData {
   email: string;
   phone: string;
   notes: string;
+}
+
+export interface StudentProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  avatarUrl?: string;
+  gradeLevel?: string;
+}
+
+export interface StudentUpload {
+  id: string;
+  studentEmail: string;
+  type: 'payment' | 'homework';
+  fileName: string;
+  fileSize: number; // in bytes
+  fileType: string;
+  dataUrl?: string;
+  notes?: string;
+  uploadedAt: string;
+  status: 'verified' | 'pending_review' | 'submitted';
+  amount?: string;
+  lessonDate?: string;
+  subject?: string;
 }

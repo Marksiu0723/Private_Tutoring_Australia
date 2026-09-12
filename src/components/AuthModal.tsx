@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { X, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, AlertCircle, CheckCircle2, User, Phone } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -20,6 +20,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const { signIn, signUp, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,6 +46,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    if (mode === 'signup') {
+      if (!firstName.trim()) {
+        setErrorMsg('First name is required to create a student account.');
+        return;
+      }
+      if (!lastName.trim()) {
+        setErrorMsg('Last name is required to create a student account.');
+        return;
+      }
+      if (!phone.trim()) {
+        setErrorMsg('Contact phone number is required to create a student account.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     if (mode === 'signin') {
@@ -55,7 +73,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setErrorMsg(res.error || 'Failed to sign in.');
       }
     } else if (mode === 'signup') {
-      const res = await signUp(email, password);
+      const res = await signUp(email, password, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
+      });
       setLoading(false);
       if (res.success) {
         if (res.confirmationRequired) {
@@ -80,9 +102,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-md bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] shadow-2xl border border-[#E8E4D9] dark:border-[#33332A] overflow-hidden my-auto">
+      <div className="relative w-full max-w-md bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[32px] shadow-2xl border border-[#E8E4D9] dark:border-[#33332A] overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="bg-[#F5F2ED] dark:bg-[#23231D] text-[#2D2C27] dark:text-[#EDEAE1] px-7 py-5 flex items-center justify-between border-b border-[#E8E4D9] dark:border-[#33332A]">
+        <div className="bg-[#F5F2ED] dark:bg-[#23231D] text-[#2D2C27] dark:text-[#EDEAE1] px-7 py-5 flex items-center justify-between border-b border-[#E8E4D9] dark:border-[#33332A] shrink-0">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#5A5A40] dark:text-[#A3B18A] block">
               Shanon Lee Tutoring
@@ -103,7 +125,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[#E8E4D9] dark:border-[#33332A] bg-[#F5F2ED] dark:bg-[#23231D]">
+        <div className="flex border-b border-[#E8E4D9] dark:border-[#33332A] bg-[#F5F2ED] dark:bg-[#23231D] shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -137,7 +159,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-7 space-y-4">
+        <form onSubmit={handleSubmit} className="p-7 space-y-4 overflow-y-auto">
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -152,9 +174,70 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {/* Student Sign Up Required Fields: First Name, Last Name, Phone Number */}
+          {mode === 'signup' && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                    {t('auth.firstName')} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-3" />
+                    <input
+                      id="auth-first-name-input"
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="e.g. Jessica"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                    {t('auth.lastName')} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-3" />
+                    <input
+                      id="auth-last-name-input"
+                      type="text"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="e.g. Chen"
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                  {t('auth.phone')} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-3" />
+                  <input
+                    id="auth-phone-input"
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 0412 345 678"
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-              {t('auth.email')}
+              {t('auth.email')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-[#8C867A] dark:text-[#A6A295] absolute left-3.5 top-3" />
@@ -168,13 +251,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none"
               />
             </div>
+            {mode === 'signup' && (
+              <p className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1">
+                Your email automatically links to all lesson bookings made under this address.
+              </p>
+            )}
           </div>
 
           {mode !== 'reset' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295]">
-                  {t('auth.password')}
+                  {t('auth.password')} <span className="text-red-500">*</span>
                 </label>
                 {mode === 'signin' && (
                   <button

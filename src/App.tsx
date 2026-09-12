@@ -35,19 +35,26 @@ const MainAppContent: React.FC = () => {
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [selectedPackageId, setSelectedPackageId] = useState<PackageId | undefined>(undefined);
 
-  // Sync view with URL hash for quick navigation & bookmarking (#admin, #portal)
+  // Sync view with URL pathname (/admin, /portal) and URL hash (#admin, #portal) for bookmarking & direct URLs
   useEffect(() => {
-    const handleHash = () => {
+    const handleNavigationSync = () => {
+      const path = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
-      if (hash === '#admin' || hash === '#admin-portal') {
+
+      if (path === '/admin' || path.startsWith('/admin/') || hash === '#admin' || hash === '#admin-portal') {
         setCurrentView('admin-dashboard');
-      } else if (hash === '#portal' || hash === '#client-portal') {
+      } else if (path === '/portal' || path === '/student' || hash === '#portal' || hash === '#client-portal' || hash === '#student') {
         setCurrentView('client-portal');
       }
     };
-    handleHash();
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
+
+    handleNavigationSync();
+    window.addEventListener('hashchange', handleNavigationSync);
+    window.addEventListener('popstate', handleNavigationSync);
+    return () => {
+      window.removeEventListener('hashchange', handleNavigationSync);
+      window.removeEventListener('popstate', handleNavigationSync);
+    };
   }, []);
 
   // Trigger booking with specific package from Structured Tutoring Plans
@@ -72,22 +79,32 @@ const MainAppContent: React.FC = () => {
   // Route to Client Portal
   const handleOpenClientPortal = () => {
     setCurrentView('client-portal');
-    window.location.hash = '#portal';
+    try {
+      window.history.pushState(null, '', '/portal');
+    } catch {
+      window.location.hash = '#portal';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Route to Admin Dashboard
+  // Route to Admin Dashboard (.../admin)
   const handleOpenAdmin = () => {
     setCurrentView('admin-dashboard');
-    window.location.hash = '#admin';
+    try {
+      window.history.pushState(null, '', '/admin');
+    } catch {
+      window.location.hash = '#admin';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Return to public website
   const handleNavigateHome = () => {
     setCurrentView('landing');
-    if (window.location.hash === '#admin' || window.location.hash === '#portal') {
-      window.history.pushState(null, '', window.location.pathname);
+    try {
+      window.history.pushState(null, '', '/');
+    } catch {
+      window.location.hash = '';
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -117,6 +134,7 @@ const MainAppContent: React.FC = () => {
           <ClientPortal
             onBackToSite={handleNavigateHome}
             onOpenBooking={handleOpenBooking}
+            onOpenAuth={handleOpenAuth}
           />
         )}
 

@@ -47,6 +47,12 @@ function createDummyClient(): SupabaseClient<any> {
   return {
     auth: dummyAuth,
     from: () => chainableQuery,
+    storage: {
+      from: () => ({
+        upload: async () => ({ data: { path: `mock_${Date.now()}` }, error: null }),
+        getPublicUrl: (path: string) => ({ data: { publicUrl: path } }),
+      }),
+    },
   } as unknown as SupabaseClient<any>;
 }
 

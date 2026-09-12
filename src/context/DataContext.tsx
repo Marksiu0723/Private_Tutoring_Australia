@@ -45,6 +45,7 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   business_email: 'shanon.lcm@gmail.com',
   business_phone: null,
   business_address: null,
+  default_zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
   slot_interval_minutes: 30,
   booking_notice_hours: 12,
 };
@@ -61,6 +62,7 @@ const INITIAL_DEMO_APPOINTMENTS: Appointment[] = [
     end_time: '17:00',
     status: 'confirmed',
     notes: 'Year 9 Chemistry: Atomic structure, electron configuration & covalent bonding foundations.',
+    zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
     created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
     service: DEFAULT_SERVICES[0],
   },
@@ -75,6 +77,7 @@ const INITIAL_DEMO_APPOINTMENTS: Appointment[] = [
     end_time: '18:30',
     status: 'pending',
     notes: 'Year 11 Biology: Module 3 Depth Study review & enzyme activity kinetics.',
+    zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
     created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
     service: DEFAULT_SERVICES[1],
   },
@@ -89,6 +92,7 @@ const INITIAL_DEMO_APPOINTMENTS: Appointment[] = [
     end_time: '11:00',
     status: 'confirmed',
     notes: 'HSC Chemistry: Equilibrium & acid/base titration calculations technique.',
+    zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
     created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
     service: DEFAULT_SERVICES[1],
   },
@@ -103,6 +107,7 @@ const INITIAL_DEMO_APPOINTMENTS: Appointment[] = [
     end_time: '16:00',
     status: 'completed',
     notes: 'Year 8 Living World: Ecosystems & energy flow through trophic levels.',
+    zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
     created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
     service: DEFAULT_SERVICES[0],
   },
@@ -628,6 +633,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       else payload.business_address = addressValue;
     }
 
+    if (data.default_zoom_link !== undefined) {
+      payload.default_zoom_link = data.default_zoom_link?.trim() || null;
+    }
+
     if (isSupabaseConfigured) {
       try {
         let query;
@@ -706,6 +715,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       start_time: data.start_time,
       end_time: data.end_time,
       notes: data.notes ? data.notes.trim() : null,
+      zoom_link: data.zoom_link ? data.zoom_link.trim() : null,
       status: data.status || 'confirmed',
     };
 
