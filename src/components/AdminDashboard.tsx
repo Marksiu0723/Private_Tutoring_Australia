@@ -204,7 +204,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       setSettingsPhone(businessSettings.business_phone || '');
       setSettingsAddress(businessSettings.business_address || '');
       setSettingsInterval(businessSettings.slot_interval_minutes || 30);
-      setSettingsNotice(businessSettings.booking_notice_hours || 12);
+      setSettingsNotice(businessSettings.booking_notice_hours || 24);
       setSettingsDefaultZoom(businessSettings.default_zoom_link || '');
     }
   }, [businessSettings]);
@@ -808,7 +808,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
       business_phone: settingsPhone.trim() ? settingsPhone.trim() : null,
       business_address: settingsAddress.trim() ? settingsAddress.trim() : null,
       slot_interval_minutes: Number(settingsInterval) || 30,
-      booking_notice_hours: Number(settingsNotice) || 12,
+      booking_notice_hours: Number(settingsNotice) || 24,
       default_zoom_link: settingsDefaultZoom.trim() || null,
     });
 

@@ -47,7 +47,7 @@ const DEFAULT_SETTINGS: BusinessSettings = {
   business_address: null,
   default_zoom_link: 'https://us06web.zoom.us/j/84291827365?pwd=ScienceExcellence2025',
   slot_interval_minutes: 30,
-  booking_notice_hours: 12,
+  booking_notice_hours: 24,
 };
 
 const INITIAL_DEMO_APPOINTMENTS: Appointment[] = [
@@ -231,7 +231,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const phoneVal = loadedSettings.phone ?? loadedSettings.business_phone ?? null;
         const addrVal = loadedSettings.address ?? loadedSettings.business_address ?? null;
         const intervalVal = Number(loadedSettings.slot_interval_minutes) || 30;
-        const noticeVal = Number(loadedSettings.booking_notice_hours) || 12;
+        const noticeVal = Number(loadedSettings.booking_notice_hours) || 24;
 
         setBusinessSettings({
           id: loadedSettings.id,

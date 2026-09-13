@@ -218,7 +218,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
-        bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+        bookingNoticeHours: businessSettings.booking_notice_hours || 24,
         otherSelectedOccurrences: newOccurrences,
       });
 
@@ -254,7 +254,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
       businessHours,
       blockedDates,
       existingAppointments: adminAppointments,
-      bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+      bookingNoticeHours: businessSettings.booking_notice_hours || 24,
     });
   }, [
     currentOccurrence?.dateStr,
@@ -290,7 +290,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
-        bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+        bookingNoticeHours: businessSettings.booking_notice_hours || 24,
         otherSelectedOccurrences: updated,
       });
       return {
@@ -333,7 +333,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
-        bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+        bookingNoticeHours: businessSettings.booking_notice_hours || 24,
         otherSelectedOccurrences: updated,
       });
       return {
@@ -367,7 +367,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         businessHours,
         blockedDates,
         existingAppointments: adminAppointments,
-        bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+        bookingNoticeHours: businessSettings.booking_notice_hours || 24,
         otherSelectedOccurrences: updated,
       });
       return {

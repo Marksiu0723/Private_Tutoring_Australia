@@ -405,7 +405,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       businessHours,
       blockedDates,
       existingAppointments: appointments.filter((a) => a.id !== rescheduleModalAppt.id),
-      bookingNoticeHours: businessSettings.booking_notice_hours || 12,
+      bookingNoticeHours: businessSettings.booking_notice_hours || 24,
     });
   }, [
     rescheduleModalAppt,
@@ -790,6 +790,14 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                       const service =
                         appt.service || services.find((s) => s.id === appt.service_id);
 
+                      const isPastNoticePeriod = (() => {
+                        const [h, m] = appt.start_time.split(':').map(Number);
+                        const apptDate = parseYMDToDate(appt.appointment_date);
+                        apptDate.setHours(h, m, 0, 0);
+                        const diffHours = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+                        return diffHours <= (businessSettings.booking_notice_hours || 24);
+                      })();
+
                       return (
                         <div
                           key={appt.id}
@@ -880,17 +888,23 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
                           </div>
 
                           <div className="mt-6 pt-4 border-t border-[#E8E4D9] dark:border-[#313128] flex items-center justify-end gap-2.5">
+                            {isPastNoticePeriod && (
+                              <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] font-medium uppercase tracking-wider mr-auto">
+                                &lt; {businessSettings.booking_notice_hours || 24} {language === 'zh' ? '小时不可更改' : 'hrs notice required'}
+                              </span>
+                            )}
                             <button
                               onClick={() => handleOpenReschedule(appt)}
-                              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full transition-colors flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+                              disabled={isPastNoticePeriod}
+                              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] hover:text-[#2D2C27] bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] dark:hover:bg-[#33332A] border border-[#E8E4D9] dark:border-[#38382E] rounded-full transition-colors flex items-center gap-1.5 cursor-pointer min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                               <span>{t('portal.reschedule')}</span>
                             </button>
-
                             <button
                               onClick={() => setCancelModalAppt(appt)}
-                              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer min-h-[44px]"
+                              disabled={isPastNoticePeriod}
+                              className="px-4 py-2 text-xs uppercase tracking-wider font-semibold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-full transition-colors flex items-center gap-1.5 cursor-pointer min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span>{t('portal.cancel')}</span>
