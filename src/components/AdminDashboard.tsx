@@ -3,7 +3,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { Service, AppointmentStatus, BusinessHour } from '../types';
-import { formatTime12h } from '../lib/availability';
+import { formatTime12h, formatDateToYMD, parseYMDToDate } from '../lib/availability';
 import {
   LayoutDashboard,
   Calendar,
@@ -62,6 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     updateBusinessHour,
     saveAllBusinessHours,
     addBlockedDate,
+    addBlockedDates,
     removeBlockedDate,
     updateBusinessSettings,
     updateAppointmentStatus,
@@ -131,8 +132,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
   // Blocked Date form
   const [newBlockedDate, setNewBlockedDate] = useState('');
+  const [newBlockedEndDate, setNewBlockedEndDate] = useState('');
   const [newBlockedReason, setNewBlockedReason] = useState('');
   const [newBlockedIsPartial, setNewBlockedIsPartial] = useState(false);
+  const [newBlockedIsDateRange, setNewBlockedIsDateRange] = useState(false);
   const [newBlockedStart, setNewBlockedStart] = useState('12:00');
   const [newBlockedEnd, setNewBlockedEnd] = useState('14:00');
   const [deletingBlockedId, setDeletingBlockedId] = useState<string | null>(null);
@@ -657,14 +660,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     if (!newBlockedDate) return;
     
     let reasonToSave = newBlockedReason.trim() || null;
-    if (newBlockedIsPartial) {
+    if (newBlockedIsPartial && !newBlockedIsDateRange) {
       reasonToSave = `[${newBlockedStart}-${newBlockedEnd}] ${reasonToSave || 'Specific time block'}`.trim();
     }
     
-    await addBlockedDate(newBlockedDate, reasonToSave);
+    if (newBlockedIsDateRange && newBlockedEndDate) {
+      const startDate = parseYMDToDate(newBlockedDate);
+      const endDate = parseYMDToDate(newBlockedEndDate);
+      
+      if (startDate > endDate) {
+        alert('End date must be after start date');
+        return;
+      }
+
+      const payloads = [];
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        payloads.push({
+          blocked_date: formatDateToYMD(current),
+          reason: reasonToSave,
+        });
+        current.setDate(current.getDate() + 1);
+      }
+      await addBlockedDates(payloads);
+    } else {
+      await addBlockedDate(newBlockedDate, reasonToSave);
+    }
+
     setNewBlockedDate('');
+    setNewBlockedEndDate('');
     setNewBlockedReason('');
     setNewBlockedIsPartial(false);
+    setNewBlockedIsDateRange(false);
   };
 
   // Remove Blocked Date
@@ -1773,7 +1800,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               <div className="flex flex-col sm:flex-row items-end gap-3.5">
                 <div className="flex-1 w-full">
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-                    Blocked Date
+                    {newBlockedIsDateRange ? 'Start Date' : 'Blocked Date'}
                   </label>
                   <input
                     type="date"
@@ -1783,6 +1810,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                     className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
                   />
                 </div>
+                
+                {newBlockedIsDateRange && (
+                  <div className="flex-1 w-full">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      min={newBlockedDate}
+                      value={newBlockedEndDate}
+                      onChange={(e) => setNewBlockedEndDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
+                    />
+                  </div>
+                )}
+
                 <div className="flex-1 w-full">
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
                     Reason (Optional)
@@ -1803,13 +1847,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </button>
               </div>
 
-              {/* Specific Time Toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              {/* Toggles */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 pt-2">
+                <label className="flex items-center gap-2 text-xs font-medium text-[#4A4A40] dark:text-[#EDEAE1] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newBlockedIsDateRange}
+                    onChange={(e) => {
+                      setNewBlockedIsDateRange(e.target.checked);
+                      if (e.target.checked) setNewBlockedIsPartial(false);
+                    }}
+                    className="w-4 h-4 text-[#5A5A40] rounded border-gray-300 focus:ring-[#5A5A40]"
+                  />
+                  Multiple Days (Date Range)
+                </label>
+
                 <label className="flex items-center gap-2 text-xs font-medium text-[#4A4A40] dark:text-[#EDEAE1] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newBlockedIsPartial}
-                    onChange={(e) => setNewBlockedIsPartial(e.target.checked)}
+                    onChange={(e) => {
+                      setNewBlockedIsPartial(e.target.checked);
+                      if (e.target.checked) setNewBlockedIsDateRange(false);
+                    }}
                     className="w-4 h-4 text-[#5A5A40] rounded border-gray-300 focus:ring-[#5A5A40]"
                   />
                   Specific Time Only (Partial Day Block)

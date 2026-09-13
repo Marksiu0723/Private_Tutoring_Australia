@@ -134,6 +134,7 @@ interface DataContextType {
   updateBusinessHour: (idOrWeekday: string | number, data: Partial<BusinessHour>) => Promise<{ success: boolean; error?: string }>;
   saveAllBusinessHours: (hours: BusinessHour[]) => Promise<{ success: boolean; error?: string }>;
   addBlockedDate: (blocked_date: string, reason: string | null) => Promise<{ success: boolean; error?: string }>;
+  addBlockedDates: (dates: { blocked_date: string; reason: string | null }[]) => Promise<{ success: boolean; error?: string }>;
   removeBlockedDate: (id: string, blocked_date?: string) => Promise<{ success: boolean; error?: string }>;
   updateBusinessSettings: (data: Partial<BusinessSettings>) => Promise<{ success: boolean; error?: string }>;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<{ success: boolean; error?: string }>;
@@ -558,33 +559,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     blocked_date: string,
     reason: string | null
   ): Promise<{ success: boolean; error?: string }> => {
-    const payload = {
-      blocked_date,
-      reason: reason ? reason.trim() : null,
-    };
+    return addBlockedDates([{ blocked_date, reason }]);
+  };
+
+  const addBlockedDates = async (
+    dates: { blocked_date: string; reason: string | null }[]
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (dates.length === 0) return { success: true };
+
+    const payloads = dates.map(d => ({
+      blocked_date: d.blocked_date,
+      reason: d.reason ? d.reason.trim() : null,
+    }));
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('blocked_dates').insert([payload]);
+        const { error } = await supabase.from('blocked_dates').insert(payloads);
         if (error) {
-          console.error('Error adding blocked date in Supabase:', error);
+          console.error('Error adding blocked dates in Supabase:', error);
           return { success: false, error: error.message };
         }
         await loadPublicData();
         return { success: true };
       } catch (err: any) {
-        console.error('Exception adding blocked date:', err);
-        return { success: false, error: err.message || 'Failed to add blocked date' };
+        console.error('Exception adding blocked dates:', err);
+        return { success: false, error: err.message || 'Failed to add blocked dates' };
       }
     }
 
-    const localBd: BlockedDate = {
-      id: `bd-${Date.now()}`,
-      blocked_date,
-      reason: reason ? reason.trim() : null,
+    const localBds: BlockedDate[] = payloads.map((p, idx) => ({
+      id: `bd-${Date.now()}-${idx}`,
+      blocked_date: p.blocked_date,
+      reason: p.reason,
       created_at: new Date().toISOString(),
-    };
-    setBlockedDates((prev) => [...prev, localBd]);
+    }));
+    setBlockedDates((prev) => [...prev, ...localBds]);
     return { success: true };
   };
 
@@ -837,6 +846,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateBusinessHour,
         saveAllBusinessHours,
         addBlockedDate,
+        addBlockedDates,
         removeBlockedDate,
         updateBusinessSettings,
         updateAppointmentStatus,
