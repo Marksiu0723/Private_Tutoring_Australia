@@ -39,6 +39,7 @@ interface BookingFlowProps {
   initialServiceId?: string;
   initialPackageId?: PackageId;
   onOpenClientPortal: () => void;
+  onReturnToMain?: () => void;
 }
 
 export const BookingFlow: React.FC<BookingFlowProps> = ({
@@ -47,6 +48,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   initialServiceId,
   initialPackageId,
   onOpenClientPortal,
+  onReturnToMain,
 }) => {
   const { t, language } = useLanguage();
   const {
@@ -106,12 +108,22 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmedData, setConfirmedData] = useState<any | null>(null);
 
-  // Set initial selections when opened
+  // Set initial selections and reset state when opened
   useEffect(() => {
     if (isOpen) {
+      // Reset flow state
+      setStep(1);
+      setFullName('');
+      setEmail('');
+      setPhone('');
+      setNotes('');
+      setSubmitError(null);
+      setConfirmedData(null);
+      setSubmitting(false);
+
       if (initialServiceId) {
         setSelectedServiceId(initialServiceId);
-      } else if (activeServices.length > 0 && !selectedServiceId) {
+      } else if (activeServices.length > 0) {
         setSelectedServiceId(activeServices[0].id);
       }
 
@@ -122,6 +134,9 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         } else {
           setRecurrence('weekly');
         }
+      } else {
+        setSelectedPackageId('single');
+        setRecurrence('one-time');
       }
     }
   }, [isOpen, initialServiceId, initialPackageId, activeServices]);
@@ -1049,21 +1064,27 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <button
+                  id="success-book-another-btn"
+                  onClick={() => {
+                    if (onReturnToMain) {
+                      onReturnToMain();
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  className="px-7 py-3.5 rounded-full bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714] font-semibold text-xs uppercase tracking-widest hover:bg-[#484833] dark:hover:bg-[#8F9E72] transition-all cursor-pointer shadow-xs min-h-[44px]"
+                >
+                  {t('btn.bookAnother')}
+                </button>
+                <button
                   id="success-portal-btn"
                   onClick={() => {
                     onClose();
                     onOpenClientPortal();
                   }}
-                  className="px-7 py-3.5 rounded-full bg-[#5A5A40] dark:bg-[#A3B18A] text-white dark:text-[#171714] font-semibold text-xs uppercase tracking-widest hover:bg-[#484833] dark:hover:bg-[#8F9E72] transition-all cursor-pointer shadow-xs min-h-[44px]"
-                >
-                  {t('btn.viewPortal')}
-                </button>
-                <button
-                  id="success-close-btn"
-                  onClick={onClose}
                   className="px-7 py-3.5 rounded-full bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#33332A] font-semibold text-xs uppercase tracking-wider hover:bg-[#F5F2ED] dark:hover:bg-[#2A2A22] transition-all cursor-pointer min-h-[44px]"
                 >
-                  {t('btn.close')}
+                  {t('btn.viewPortal')}
                 </button>
               </div>
             </div>

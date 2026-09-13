@@ -194,6 +194,10 @@ const MainAppContent: React.FC = () => {
         initialServiceId={selectedServiceId}
         initialPackageId={selectedPackageId}
         onOpenClientPortal={handleOpenClientPortal}
+        onReturnToMain={() => {
+          setBookingModalOpen(false);
+          switchViewWithTransition('landing');
+        }}
       />
 
       {/* Supabase Auth Modal */}

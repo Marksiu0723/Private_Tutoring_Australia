@@ -127,10 +127,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [newApptZoomLink, setNewApptZoomLink] = useState('');
   const [newApptStatus, setNewApptStatus] = useState<AppointmentStatus>('confirmed');
   const [isSubmittingAppt, setIsSubmittingAppt] = useState(false);
+  const [acceptingAll, setAcceptingAll] = useState(false);
 
   // Blocked Date form
   const [newBlockedDate, setNewBlockedDate] = useState('');
   const [newBlockedReason, setNewBlockedReason] = useState('');
+  const [newBlockedIsPartial, setNewBlockedIsPartial] = useState(false);
+  const [newBlockedStart, setNewBlockedStart] = useState('12:00');
+  const [newBlockedEnd, setNewBlockedEnd] = useState('14:00');
   const [deletingBlockedId, setDeletingBlockedId] = useState<string | null>(null);
 
   // Business Settings form
@@ -492,6 +496,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     }
   };
 
+  const handleAcceptAllPending = async () => {
+    if (!pendingAppointments.length) return;
+    setAcceptingAll(true);
+    let hasError = false;
+    for (const appt of pendingAppointments) {
+      const res = await updateAppointmentStatus(appt.id, 'confirmed');
+      if (!res.success) {
+        hasError = true;
+      }
+    }
+    setAcceptingAll(false);
+    if (hasError) {
+      alert('Some appointments failed to confirm. Please check the list.');
+    }
+  };
+
   const handleOpenZoomLinkModal = (apptId: string, currentLink: string | null) => {
     setZoomLinkApptId(apptId);
     setZoomLinkValue(currentLink || '');
@@ -635,9 +655,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const handleAddBlockedDateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBlockedDate) return;
-    await addBlockedDate(newBlockedDate, newBlockedReason.trim() || null);
+    
+    let reasonToSave = newBlockedReason.trim() || null;
+    if (newBlockedIsPartial) {
+      reasonToSave = `[${newBlockedStart}-${newBlockedEnd}] ${reasonToSave || 'Specific time block'}`.trim();
+    }
+    
+    await addBlockedDate(newBlockedDate, reasonToSave);
     setNewBlockedDate('');
     setNewBlockedReason('');
+    setNewBlockedIsPartial(false);
   };
 
   // Remove Blocked Date
@@ -686,6 +713,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <h2 className="text-base font-serif font-bold text-white tracking-tight">
               {businessSettings.business_name || 'Shanon Lee Tutoring'}
             </h2>
+            <div className="mt-1 text-[10px] text-[#A89F8D]">
+              <span className="opacity-70">Logged in as:</span> <span className="font-semibold">{user.email}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -746,6 +776,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             <h2 className="text-xl font-serif font-bold text-white tracking-tight mt-1">
               {businessSettings.business_name || 'Shanon Lee Tutoring'}
             </h2>
+            <div className="mt-2 text-[11px] text-[#A89F8D]">
+              <span className="opacity-70">Logged in as:</span> <br/><span className="font-semibold break-all">{user.email}</span>
+            </div>
           </div>
 
           {/* Navigation Links */}
@@ -951,9 +984,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                       {t('admin.needsReviewTitle')}
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                    {pendingAppointments.length} pending
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      {pendingAppointments.length} pending
+                    </span>
+                    <button
+                      onClick={handleAcceptAllPending}
+                      disabled={acceptingAll}
+                      className="px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-full transition-colors cursor-pointer"
+                    >
+                      {acceptingAll ? 'Accepting...' : 'Accept All'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-amber-200/60 dark:divide-amber-900/30 text-xs">
@@ -1726,40 +1768,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
             {/* Add Blocked Date Form */}
             <form
               onSubmit={handleAddBlockedDateSubmit}
-              className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs flex flex-col sm:flex-row items-end gap-3.5"
+              className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs flex flex-col gap-4"
             >
-              <div className="flex-1 w-full">
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-                  Blocked Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={newBlockedDate}
-                  onChange={(e) => setNewBlockedDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
-                />
+              <div className="flex flex-col sm:flex-row items-end gap-3.5">
+                <div className="flex-1 w-full">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                    Blocked Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newBlockedDate}
+                    onChange={(e) => setNewBlockedDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
+                  />
+                </div>
+                <div className="flex-1 w-full">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                    Reason (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newBlockedReason}
+                    onChange={(e) => setNewBlockedReason(e.target.value)}
+                    placeholder="e.g. Public Holiday"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold uppercase tracking-widest text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full shadow-xs cursor-pointer whitespace-nowrap min-h-[40px]"
+                >
+                  {t('admin.addBlockedDate')}
+                </button>
               </div>
 
-              <div className="flex-1 w-full">
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
-                  Reason (Optional)
+              {/* Specific Time Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <label className="flex items-center gap-2 text-xs font-medium text-[#4A4A40] dark:text-[#EDEAE1] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newBlockedIsPartial}
+                    onChange={(e) => setNewBlockedIsPartial(e.target.checked)}
+                    className="w-4 h-4 text-[#5A5A40] rounded border-gray-300 focus:ring-[#5A5A40]"
+                  />
+                  Specific Time Only (Partial Day Block)
                 </label>
-                <input
-                  type="text"
-                  value={newBlockedReason}
-                  onChange={(e) => setNewBlockedReason(e.target.value)}
-                  placeholder="e.g. Public Holiday / NSW School Term Break"
-                  className="w-full px-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-xs font-medium text-[#2D2C27] dark:text-[#EDEAE1]"
-                />
+                
+                {newBlockedIsPartial && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={newBlockedStart}
+                      onChange={(e) => setNewBlockedStart(e.target.value)}
+                      className="px-3 py-1.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-lg text-xs"
+                      required={newBlockedIsPartial}
+                    />
+                    <span className="text-[#8C867A] dark:text-[#A6A295]">to</span>
+                    <input
+                      type="time"
+                      value={newBlockedEnd}
+                      onChange={(e) => setNewBlockedEnd(e.target.value)}
+                      className="px-3 py-1.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-lg text-xs"
+                      required={newBlockedIsPartial}
+                    />
+                  </div>
+                )}
               </div>
-
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold uppercase tracking-widest text-white dark:text-[#171714] bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] rounded-full shadow-xs cursor-pointer whitespace-nowrap min-h-[40px]"
-              >
-                {t('admin.addBlockedDate')}
-              </button>
             </form>
 
             {/* Blocked Dates List */}

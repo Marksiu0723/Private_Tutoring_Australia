@@ -78,9 +78,24 @@ export function generateAvailableSlots(params: {
 
   const dateStr = formatDateToYMD(date);
 
-  // 1. Check if date is blocked
-  const isBlocked = blockedDates.some((b) => b.blocked_date === dateStr);
-  if (isBlocked) return [];
+  // 1. Check if date is blocked (Full or Partial)
+  const dayBlocks = blockedDates.filter((b) => b.blocked_date === dateStr);
+  let isFullDayBlocked = false;
+  const timeBlocks: { start: number; end: number }[] = [];
+
+  for (const block of dayBlocks) {
+    if (block.reason && block.reason.match(/^\[\d{2}:\d{2}-\d{2}:\d{2}\]/)) {
+      const times = block.reason.substring(1, 12).split('-');
+      timeBlocks.push({
+        start: timeStringToMinutes(times[0]),
+        end: timeStringToMinutes(times[1])
+      });
+    } else {
+      isFullDayBlocked = true;
+    }
+  }
+
+  if (isFullDayBlocked) return [];
 
   // 2. Check weekday in business hours
   // Weekday 0=Sunday, 1=Monday ... 6=Saturday
@@ -142,13 +157,17 @@ export function generateAvailableSlots(params: {
     }
 
     // Overlap rule: new_start < existing_end AND new_end > existing_start
-    const hasOverlap = dayAppointments.some((appt) => {
+    const hasApptOverlap = dayAppointments.some((appt) => {
       const apptStartMin = timeStringToMinutes(appt.start_time);
       const apptEndMin = timeStringToMinutes(appt.end_time);
       return startMin < apptEndMin && endMin > apptStartMin;
     });
 
-    if (!hasOverlap) {
+    const hasBlockOverlap = timeBlocks.some((block) => {
+      return startMin < block.end && endMin > block.start;
+    });
+
+    if (!hasApptOverlap && !hasBlockOverlap) {
       availableSlots.push({
         start: slotStartObj,
         end: slotEndObj,
