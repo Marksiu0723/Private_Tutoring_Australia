@@ -16,7 +16,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
   initialMode = 'signin',
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { signIn, signUp, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
@@ -296,6 +296,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm text-[#2D2C27] dark:text-[#EDEAE1] focus:ring-1 focus:ring-[#5A5A40] dark:focus:ring-[#A3B18A] focus:border-[#5A5A40] dark:focus:border-[#A3B18A] focus:outline-none"
                   />
                 </div>
+                {mode === 'signup' && (
+                  <p className="mt-1.5 text-[10px] text-[#8C867A] dark:text-[#A6A295]">
+                    {language === 'zh' ? '密码必须至少包含 6 个字符。' : 'Password must be at least 6 characters long.'}
+                  </p>
+                )}
               </div>
 
               {mode === 'signup' && (

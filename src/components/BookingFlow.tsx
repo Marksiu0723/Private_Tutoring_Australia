@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Service,
   PackageId,
@@ -84,6 +85,8 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     return service.description || '';
   };
 
+  const { user } = useAuth();
+
   // Wizard Steps: 1 to 7
   // 1: Service, 2: Package, 3: Recurrence, 4: Dates & Times, 5: Client Info, 6: Review, 7: Success
   const [step, setStep] = useState<number>(1);
@@ -113,9 +116,17 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     if (isOpen) {
       // Reset flow state
       setStep(1);
-      setFullName('');
-      setEmail('');
-      setPhone('');
+      
+      if (user) {
+        setFullName(user.user_metadata?.full_name || '');
+        setEmail(user.email || '');
+        setPhone(user.user_metadata?.phone || '');
+      } else {
+        setFullName('');
+        setEmail('');
+        setPhone('');
+      }
+      
       setNotes('');
       setSubmitError(null);
       setConfirmedData(null);
@@ -260,7 +271,8 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   // Handle slot selection for current occurrence
   const handleSelectSlot = (slot: TimeSlot) => {
     const updated = occurrences.map((occ, idx) => {
-      if (idx === activeOccurrenceIdx) {
+      // Auto-fill future occurrences if editing the first one, unless custom
+      if (idx === activeOccurrenceIdx || (activeOccurrenceIdx === 0 && recurrence !== 'custom' && idx > 0)) {
         return {
           ...occ,
           startTimeStr: slot.startTimeStr,
@@ -299,6 +311,16 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
           ...occ,
           dateStr: newDateStr,
         };
+      } else if (activeOccurrenceIdx === 0 && recurrence !== 'custom' && idx > 0) {
+        const intervalDays = recurrence === 'weekly' ? 7 : (recurrence === 'fortnightly' ? 14 : 0);
+        if (intervalDays > 0) {
+          const newBaseDate = parseYMDToDate(newDateStr);
+          newBaseDate.setDate(newBaseDate.getDate() + idx * intervalDays);
+          return {
+            ...occ,
+            dateStr: formatDateToYMD(newBaseDate)
+          };
+        }
       }
       return occ;
     });
@@ -327,7 +349,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   // Handle duration change for current occurrence
   const handleDurationChange = (newDuration: number) => {
     const updated = occurrences.map((occ, idx) => {
-      if (idx === activeOccurrenceIdx) {
+      if (idx === activeOccurrenceIdx || (activeOccurrenceIdx === 0 && recurrence !== 'custom' && idx > 0)) {
         return {
           ...occ,
           duration_minutes: newDuration,

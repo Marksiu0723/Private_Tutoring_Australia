@@ -525,15 +525,6 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
               <ArrowLeft className="w-4 h-4" />
               <span>{t('portal.returnToSite')}</span>
             </button>
-
-            <button
-              id="portal-unauth-book-btn"
-              onClick={onOpenBooking}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#38382E] transition-colors cursor-pointer min-h-[44px]"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>{t('nav.bookSession')}</span>
-            </button>
           </div>
 
           {/* Login Card */}

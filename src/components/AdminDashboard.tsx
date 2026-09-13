@@ -33,6 +33,7 @@ import {
   Video,
   Users,
 } from 'lucide-react';
+import CalendarWidget from './CalendarWidget';
 
 interface AdminDashboardProps {
   onBackToSite: () => void;
@@ -42,6 +43,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const { t } = useLanguage();
   const {
     user,
+    session,
     isAdmin,
     adminCheckLoading,
     adminError,
@@ -82,6 +84,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
   // Appointments filtering & search
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [apptFilter, setApptFilter] = useState<string>('all');
   const [datePreset, setDatePreset] = useState<'all' | 'today' | 'upcoming' | 'past' | 'custom'>('all');
   const [dateFilter, setDateFilter] = useState<string>('');
@@ -151,6 +154,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  
+  const [deletingClient, setDeletingClient] = useState<string | null>(null);
+
+  const handleDeleteClient = async (email: string) => {
+    if (!confirm(`Are you sure you want to delete the account for ${email}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setDeletingClient(email);
+    try {
+      const response = await fetch(`/api/admin/clients/${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete client account.');
+      }
+      alert('Client account deleted successfully.');
+      // Refresh list by re-fetching appointments, which drives clientsList
+      fetchAdminAppointments();
+    } catch (err: any) {
+      alert(err.message || 'An error occurred while deleting the account.');
+    } finally {
+      setDeletingClient(null);
+    }
+  };
 
   // Fetch appointments on mount
   useEffect(() => {
@@ -444,13 +476,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   }
 
   // Today's date string (YYYY-MM-DD)
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayDate = new Date();
+  const todayStr = todayDate.toISOString().split('T')[0];
+
+  const getWeekBounds = (baseDate: Date) => {
+    const date = new Date(baseDate);
+    date.setHours(0,0,0,0);
+    const day = date.getDay();
+    const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date);
+    monday.setDate(diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { start: monday, end: sunday };
+  };
+
+  const thisWeekBounds = getWeekBounds(todayDate);
+  const lastWeekDate = new Date(todayDate);
+  lastWeekDate.setDate(lastWeekDate.getDate() - 7);
+  const lastWeekBounds = getWeekBounds(lastWeekDate);
+
+  const thisWeekStartStr = formatDateToYMD(thisWeekBounds.start);
+  const thisWeekEndStr = formatDateToYMD(thisWeekBounds.end);
+  const lastWeekStartStr = formatDateToYMD(lastWeekBounds.start);
+  const lastWeekEndStr = formatDateToYMD(lastWeekBounds.end);
+
+  const calculateHours = (appts: typeof adminAppointments) => {
+    let totalMinutes = 0;
+    appts.forEach(a => {
+      if (a.start_time && a.end_time) {
+        const partsStart = a.start_time.split(':').map(Number);
+        const partsEnd = a.end_time.split(':').map(Number);
+        const startMin = (partsStart[0] || 0) * 60 + (partsStart[1] || 0);
+        const endMin = (partsEnd[0] || 0) * 60 + (partsEnd[1] || 0);
+        totalMinutes += (endMin - startMin);
+      }
+    });
+    return totalMinutes / 60;
+  };
+
+  const thisWeekAppointments = adminAppointments.filter(a => 
+    (a.status === 'completed' || a.status === 'confirmed') &&
+    a.appointment_date >= thisWeekStartStr && a.appointment_date <= thisWeekEndStr
+  );
+  
+  const lastWeekAppointments = adminAppointments.filter(a => 
+    (a.status === 'completed' || a.status === 'confirmed') &&
+    a.appointment_date >= lastWeekStartStr && a.appointment_date <= lastWeekEndStr
+  );
+
+  const thisWeekHours = calculateHours(thisWeekAppointments);
+  const lastWeekHours = calculateHours(lastWeekAppointments);
+  const wowHoursPct = lastWeekHours === 0 
+    ? (thisWeekHours > 0 ? 100 : 0) 
+    : ((thisWeekHours - lastWeekHours) / lastWeekHours) * 100;
+
+  const monthStartStr = todayStr.substring(0, 8) + '01';
+  const thisMonthAppts = adminAppointments.filter(a => 
+    (a.status === 'completed' || a.status === 'confirmed') &&
+    a.appointment_date >= monthStartStr
+  );
+  const activeStudentsThisMonth = new Set(thisMonthAppts.map(a => a.email)).size;
 
   // Calculated Real Supabase Metrics
   const totalBookings = adminAppointments.length;
   const todaysAppointments = adminAppointments.filter(
     (a) => a.appointment_date === todayStr && a.status !== 'cancelled'
   );
+  const selectedDateAppts = adminAppointments.filter(
+    (a) => a.appointment_date === calendarSelectedDate && a.status !== 'cancelled'
+  ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   const pendingAppointments = adminAppointments.filter((a) => a.status === 'pending');
   const upcomingConfirmedAppointments = adminAppointments.filter(
     (a) => a.status === 'confirmed' && a.appointment_date >= todayStr
@@ -933,9 +1028,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               </span>
             </div>
 
-            {/* 4 Live Calculated Metric Cards + Services */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-              {/* 1. Today's Appointments */}
+            {/* 4 Live Calculated Metric Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+              
+              {/* 1. Teaching Hours (This Week) */}
+              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
+                  Teaching Hours (This Week)
+                </span>
+                <span className="text-2xl sm:text-3xl font-serif font-bold text-[#2D2C27] dark:text-[#EDEAE1] mt-2 block">
+                  {thisWeekHours.toFixed(1)}h
+                </span>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className={`text-[10px] font-semibold ${wowHoursPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {wowHoursPct > 0 ? '+' : ''}{wowHoursPct.toFixed(0)}%
+                  </span>
+                  <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] font-light">
+                    vs last week
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Today's Appointments */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
                   {t('admin.todayAppointments')}
@@ -948,7 +1062,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </span>
               </div>
 
-              {/* 2. Pending Requests */}
+              {/* 3. Pending Requests */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300 block">
                   {t('admin.pendingRequests')}
@@ -961,228 +1075,213 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 </span>
               </div>
 
-              {/* 3. Upcoming Confirmed */}
-              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
-                  {t('admin.upcomingConfirmed')}
-                </span>
-                <span className="text-2xl sm:text-3xl font-serif font-bold text-[#5A5A40] dark:text-[#A3B18A] mt-2 block">
-                  {upcomingConfirmedAppointments.length}
-                </span>
-                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
-                  Confirmed future lessons
-                </span>
-              </div>
-
-              {/* 4. Completed Lessons */}
+              {/* 4. Active Students */}
               <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] block">
-                  {t('admin.completedAppointments')}
+                  Active Students (This Month)
                 </span>
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#4A4A40] dark:text-[#EDEAE1] mt-2 block">
-                  {completedAppointments.length}
+                  {activeStudentsThisMonth}
                 </span>
                 <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
-                  Successfully taught
-                </span>
-              </div>
-
-              {/* 5. Active Services */}
-              <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] p-5 sm:p-6 rounded-[24px] border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs col-span-2 sm:col-span-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5A5A40] dark:text-[#A3B18A] block">
-                  {t('admin.activeServices')}
-                </span>
-                <span className="text-2xl sm:text-3xl font-serif font-bold text-[#5A5A40] dark:text-[#A3B18A] mt-2 block">
-                  {activeServicesCount}
-                </span>
-                <span className="text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 block font-light">
-                  Active in booking flow
+                  Unique clients
                 </span>
               </div>
             </div>
 
-            {/* Urgent Review: Pending Appointments Panel */}
-            {pendingAppointments.length > 0 && (
-              <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-[28px] p-6 sm:p-7 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                    <h3 className="font-serif font-bold text-lg sm:text-xl text-amber-900 dark:text-amber-200">
-                      {t('admin.needsReviewTitle')}
+            {/* Dashboard Lower Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 mt-6 sm:mt-8">
+              
+              {/* Left Column: Calendar & Schedule */}
+              <div className="lg:col-span-7 space-y-6 sm:space-y-8">
+                <CalendarWidget 
+                  appointments={adminAppointments}
+                  selectedDate={calendarSelectedDate}
+                  onSelectDate={setCalendarSelectedDate}
+                />
+
+                {/* Selected Date Schedule */}
+                <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
+                      Schedule for {calendarSelectedDate === todayStr ? 'Today' : calendarSelectedDate}
                     </h3>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                      {pendingAppointments.length} pending
+                    <span className="text-xs text-[#8C867A] dark:text-[#A6A295]">
+                      {selectedDateAppts.length} lessons
                     </span>
-                    <button
-                      onClick={handleAcceptAllPending}
-                      disabled={acceptingAll}
-                      className="px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-full transition-colors cursor-pointer"
-                    >
-                      {acceptingAll ? 'Accepting...' : 'Accept All'}
-                    </button>
                   </div>
+                  {selectedDateAppts.length === 0 ? (
+                    <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
+                      No appointments on this date.
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
+                      {selectedDateAppts.map((appt) => (
+                        <div
+                          key={appt.id}
+                          className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif font-bold text-sm text-[#2D2C27] dark:text-[#EDEAE1]">
+                                {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                              </span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full font-semibold uppercase text-[9px] ${
+                                  appt.status === 'confirmed'
+                                    ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB]'
+                                    : appt.status === 'completed'
+                                    ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1]'
+                                    : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                }`}
+                              >
+                                {appt.status}
+                              </span>
+                            </div>
+                            <span className="text-[#4A4A40] dark:text-[#D1C9BC] block mt-0.5">
+                              {appt.full_name} • {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.phone || appt.email}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {appt.status !== 'completed' && (
+                              <button
+                                disabled={updatingApptId === appt.id}
+                                onClick={() => handleUpdateApptStatus(appt.id, 'completed')}
+                                className="px-3 py-1 bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E] font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
+                              >
+                                {t('admin.completeAppt')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <div className="divide-y divide-amber-200/60 dark:divide-amber-900/30 text-xs">
-                  {pendingAppointments.map((appt) => (
-                    <div
-                      key={appt.id}
-                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div>
-                        <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
-                          {appt.full_name} ({appt.email})
-                        </span>
-                        <span className="text-[#6B6658] dark:text-[#A6A295]">
-                          {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science Tutoring'} •{' '}
-                          <strong className="text-[#2D2C27] dark:text-[#EDEAE1]">{appt.appointment_date}</strong> @{' '}
-                          {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
-                        </span>
-                        {appt.notes && (
-                          <p className="text-[11px] text-[#8C867A] dark:text-[#A6A295] mt-0.5 italic">
-                            "{appt.notes}"
-                          </p>
-                        )}
+              {/* Right Column: Pending & Recent */}
+              <div className="lg:col-span-5 space-y-6 sm:space-y-8">
+                {/* Urgent Review: Pending Appointments Panel */}
+                {pendingAppointments.length > 0 && (
+                  <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-[28px] p-6 sm:p-7 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                        <h3 className="font-serif font-bold text-lg sm:text-xl text-amber-900 dark:text-amber-200">
+                          {t('admin.needsReviewTitle')}
+                        </h3>
                       </div>
-
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                          {pendingAppointments.length} pending
+                        </span>
                         <button
-                          disabled={updatingApptId === appt.id}
-                          onClick={() => handleUpdateApptStatus(appt.id, 'confirmed')}
-                          className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] text-white dark:text-[#171714] rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer shadow-xs disabled:opacity-50"
+                          onClick={handleAcceptAllPending}
+                          disabled={acceptingAll}
+                          className="px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-full transition-colors cursor-pointer"
                         >
-                          {updatingApptId === appt.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Check className="w-3.5 h-3.5" />
-                          )}
-                          <span>{t('admin.confirmAppt')}</span>
-                        </button>
-                        <button
-                          disabled={updatingApptId === appt.id}
-                          onClick={() => handleUpdateApptStatus(appt.id, 'cancelled')}
-                          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-50"
-                        >
-                          <span>{t('admin.cancelAppt')}</span>
+                          {acceptingAll ? 'Accepting...' : 'Accept All'}
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <div className="divide-y divide-amber-200/60 dark:divide-amber-900/30 text-xs">
+                      {pendingAppointments.map((appt) => (
+                        <div
+                          key={appt.id}
+                          className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div>
+                            <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
+                              {appt.full_name} ({appt.email})
+                            </span>
+                            <span className="text-[#6B6658] dark:text-[#A6A295]">
+                              {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science Tutoring'} •{' '}
+                              <strong className="text-[#2D2C27] dark:text-[#EDEAE1]">{appt.appointment_date}</strong> @{' '}
+                              {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
+                            </span>
+                            {appt.notes && (
+                              <p className="text-[11px] text-[#8C867A] dark:text-[#A6A295] mt-0.5 italic">
+                                "{appt.notes}"
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            <button
+                              disabled={updatingApptId === appt.id}
+                              onClick={() => handleUpdateApptStatus(appt.id, 'confirmed')}
+                              className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] text-white dark:text-[#171714] rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer shadow-xs disabled:opacity-50"
+                            >
+                              {updatingApptId === appt.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              <span>{t('admin.confirmAppt')}</span>
+                            </button>
+                            <button
+                              disabled={updatingApptId === appt.id}
+                              onClick={() => handleUpdateApptStatus(appt.id, 'cancelled')}
+                              className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40 rounded-full text-xs font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+                            >
+                              <span>{t('admin.cancelAppt')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Today's Teaching Schedule */}
-            <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
-                  {t('admin.todayScheduleTitle')}
-                </h3>
-                <span className="text-xs text-[#8C867A] dark:text-[#A6A295]">
-                  {todayStr} ({todaysAppointments.length} lessons)
-                </span>
-              </div>
-
-              {todaysAppointments.length === 0 ? (
-                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
-                  {t('admin.noApptsToday')}
-                </p>
-              ) : (
-                <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
-                  {todaysAppointments.map((appt) => (
-                    <div
-                      key={appt.id}
-                      className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                {/* Recent Appointments Preview */}
+                <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
+                      {t('admin.recentAppointmentsTitle')}
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab('appointments')}
+                      className="text-xs uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#A3B18A] hover:underline cursor-pointer min-h-[36px] flex items-center"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-serif font-bold text-sm text-[#2D2C27] dark:text-[#EDEAE1]">
-                            {formatTime12h(appt.start_time)} – {formatTime12h(appt.end_time)}
-                          </span>
+                      View all appointments →
+                    </button>
+                  </div>
+                  {adminAppointments.length === 0 ? (
+                    <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
+                      No appointments booked yet.
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
+                      {[...adminAppointments].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5).map((appt) => (
+                        <div key={appt.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
+                              {appt.full_name} ({appt.email})
+                            </span>
+                            <span className="text-[#8C867A] dark:text-[#A6A295]">
+                              {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.appointment_date} @{' '}
+                              {formatTime12h(appt.start_time)}
+                            </span>
+                          </div>
                           <span
-                            className={`px-2.5 py-0.5 rounded-full font-semibold uppercase text-[9px] ${
+                            className={`self-start sm:self-auto px-3 py-1 rounded-full font-semibold uppercase text-[10px] ${
                               appt.status === 'confirmed'
-                                ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB]'
+                                ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]'
+                                : appt.status === 'cancelled'
+                                ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
                                 : appt.status === 'completed'
-                                ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1]'
-                                : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E]'
+                                : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40'
                             }`}
                           >
                             {appt.status}
                           </span>
                         </div>
-                        <span className="text-[#4A4A40] dark:text-[#D1C9BC] block mt-0.5">
-                          {appt.full_name} • {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.phone || appt.email}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {appt.status !== 'completed' && (
-                          <button
-                            disabled={updatingApptId === appt.id}
-                            onClick={() => handleUpdateApptStatus(appt.id, 'completed')}
-                            className="px-3 py-1 bg-white dark:bg-[#2A2A22] hover:bg-[#E8E4D9] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E] font-semibold rounded-full text-[10px] uppercase tracking-wider cursor-pointer"
-                          >
-                            {t('admin.completeAppt')}
-                          </button>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Recent Appointments Preview */}
-            <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-6 sm:p-7 border border-[#E8E4D9] dark:border-[#2E2E24] shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-serif font-bold text-lg sm:text-xl text-[#2D2C27] dark:text-[#EDEAE1]">
-                  {t('admin.recentAppointmentsTitle')}
-                </h3>
-                <button
-                  onClick={() => setActiveTab('appointments')}
-                  className="text-xs uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#A3B18A] hover:underline cursor-pointer min-h-[36px] flex items-center"
-                >
-                  View all appointments →
-                </button>
               </div>
-
-              {adminAppointments.length === 0 ? (
-                <p className="text-xs text-[#8C867A] dark:text-[#A6A295] py-6 text-center font-light">
-                  No appointments booked yet.
-                </p>
-              ) : (
-                <div className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24] text-xs">
-                  {[...adminAppointments].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 5).map((appt) => (
-                    <div key={appt.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <span className="font-serif font-semibold text-sm text-[#2D2C27] dark:text-[#EDEAE1] block">
-                          {appt.full_name} ({appt.email})
-                        </span>
-                        <span className="text-[#8C867A] dark:text-[#A6A295]">
-                          {appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science'} • {appt.appointment_date} @{' '}
-                          {formatTime12h(appt.start_time)}
-                        </span>
-                      </div>
-                      <span
-                        className={`self-start sm:self-auto px-3 py-1 rounded-full font-semibold uppercase text-[10px] ${
-                          appt.status === 'confirmed'
-                            ? 'bg-[#E8E4D9] dark:bg-[#25251E] text-[#5A5A40] dark:text-[#C6D4AB] border border-[#D1C9BC] dark:border-[#38382E]'
-                            : appt.status === 'cancelled'
-                            ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/40'
-                            : appt.status === 'completed'
-                            ? 'bg-white dark:bg-[#23231D] text-[#4A4A40] dark:text-[#EDEAE1] border border-[#E8E4D9] dark:border-[#38382E]'
-                            : 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40'
-                        }`}
-                      >
-                        {appt.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1478,12 +1577,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                       <th className="px-5 py-3 font-semibold">Total Bookings</th>
                       <th className="px-5 py-3 font-semibold">Booking Status</th>
                       <th className="px-5 py-3 font-semibold">Last Booking</th>
+                      <th className="px-5 py-3 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EBE7D9] dark:divide-[#36362B]">
                     {clientsList.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#8A8575]">
+                        <td colSpan={6} className="px-5 py-8 text-center text-sm text-[#8A8575]">
                           No clients found.
                         </td>
                       </tr>
@@ -1532,6 +1632,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                           </td>
                           <td className="px-5 py-4 text-xs text-[#6B6658] dark:text-[#A6A295]">
                             {client.lastBookingDate ? new Date(client.lastBookingDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <button
+                              onClick={() => handleDeleteClient(client.email)}
+                              disabled={deletingClient === client.email}
+                              title="Delete Account"
+                              className="p-2 text-[#8A8575] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       ))

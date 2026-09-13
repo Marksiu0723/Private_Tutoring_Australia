@@ -404,6 +404,50 @@ app.get('/api/admin/appointments', async (req: Request, res: Response): Promise<
   }
 });
 
+// 6. Admin Delete Client Account
+app.delete('/api/admin/clients/:email', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminEmail = await getVerifiedUserEmail(req);
+    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
+    
+    if (!adminEmail || !ADMIN_EMAILS.includes(adminEmail.toLowerCase())) {
+      res.status(401).json({ error: 'Unauthorized. Admin access required.' });
+      return;
+    }
+    
+    const targetEmail = req.params.email;
+    if (!targetEmail) {
+      res.status(400).json({ error: 'Client email is required.' });
+      return;
+    }
+    
+    if (serverSupabase) {
+      // Find the user by email via Admin API
+      const { data: usersData, error: usersErr } = await serverSupabase.auth.admin.listUsers();
+      if (usersErr) {
+        res.status(500).json({ error: usersErr.message });
+        return;
+      }
+      
+      const targetUser = usersData.users.find((u: any) => u.email?.toLowerCase() === targetEmail.toLowerCase());
+      if (targetUser) {
+        const { error: deleteErr } = await serverSupabase.auth.admin.deleteUser(targetUser.id);
+        if (deleteErr) {
+          res.status(500).json({ error: deleteErr.message });
+          return;
+        }
+      } else {
+        res.status(404).json({ error: 'Client account not found.' });
+        return;
+      }
+    }
+    
+    res.json({ success: true, message: 'Client account deleted successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Vite middleware or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
