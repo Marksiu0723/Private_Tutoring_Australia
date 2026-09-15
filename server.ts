@@ -192,6 +192,20 @@ const handleCancelAppointment = async (req: Request, res: Response): Promise<voi
           return;
         }
 
+        // Verify notice period
+        const { data: settings } = await serverSupabase.from('business_settings').select('booking_notice_hours').maybeSingle();
+        const noticeHours = settings?.booking_notice_hours || 24;
+        
+        const [h, m] = appointment.start_time.split(':').map(Number);
+        const apptDate = new Date(`${appointment.appointment_date}T00:00:00`);
+        apptDate.setHours(h, m, 0, 0);
+        const diffHours = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+        
+        if (diffHours <= noticeHours) {
+          res.status(400).json({ error: `Cannot modify appointment less than ${noticeHours} hours in advance.` });
+          return;
+        }
+
         // Update status to cancelled (do not delete)
         const { error: updateErr } = await serverSupabase
           .from('appointments')
@@ -255,6 +269,20 @@ const handleRescheduleAppointment = async (req: Request, res: Response): Promise
       if (!fetchErr && appointment) {
         if (appointment.email.toLowerCase() !== userEmail.toLowerCase()) {
           res.status(403).json({ error: 'Unauthorized to reschedule this appointment.' });
+          return;
+        }
+
+        // Verify notice period for original appointment
+        const { data: settings } = await serverSupabase.from('business_settings').select('booking_notice_hours').maybeSingle();
+        const noticeHours = settings?.booking_notice_hours || 24;
+        
+        const [h, m] = appointment.start_time.split(':').map(Number);
+        const apptDate = new Date(`${appointment.appointment_date}T00:00:00`);
+        apptDate.setHours(h, m, 0, 0);
+        const diffHours = (apptDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+        
+        if (diffHours <= noticeHours) {
+          res.status(400).json({ error: `Cannot modify appointment less than ${noticeHours} hours in advance.` });
           return;
         }
 

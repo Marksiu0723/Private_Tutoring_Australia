@@ -95,6 +95,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [selectedPackageId, setSelectedPackageId] = useState<PackageId>('single');
   const [recurrence, setRecurrence] = useState<RecurrenceType>('one-time');
+  const [selectedSessionCount, setSelectedSessionCount] = useState<number>(10);
   const [occurrences, setOccurrences] = useState<OccurrenceSlot[]>([]);
 
   // Active occurrence index being edited in Step 4
@@ -140,6 +141,9 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
 
       if (initialPackageId) {
         setSelectedPackageId(initialPackageId);
+        const pkg = PACKAGES.find(p => p.id === initialPackageId);
+        setSelectedSessionCount(pkg && pkg.sessions > 1 ? pkg.sessions : 10);
+        
         if (initialPackageId === 'single') {
           setRecurrence('one-time');
         } else {
@@ -147,6 +151,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
         }
       } else {
         setSelectedPackageId('single');
+        setSelectedSessionCount(10);
         setRecurrence('one-time');
       }
     }
@@ -172,7 +177,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     return PACKAGES.find((p) => p.id === selectedPackageId) || PACKAGES[0];
   }, [selectedPackageId]);
 
-  const targetSessions = selectedPackage.sessions;
+  const targetSessions = selectedPackage.sessions === 1 ? 1 : selectedSessionCount;
 
   // Initialize or re-calculate occurrence dates when package or recurrence changes
   useEffect(() => {
@@ -517,9 +522,6 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                         <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1] text-base sm:text-lg">
                           {getServiceName(srv)}
                         </span>
-                        <span className="text-[11px] bg-white dark:bg-[#2A2A22] text-[#5A5A40] dark:text-[#C6D4AB] px-2.5 py-0.5 rounded-full font-medium border border-[#E8E4D9] dark:border-[#38382E]">
-                          {srv.duration_minutes} {language === 'zh' ? '分钟' : 'min'}
-                        </span>
                       </div>
                       <p className="text-xs text-[#6B6658] dark:text-[#A6A295] mt-1 font-light leading-relaxed">
                         {getServiceDescription(srv)}
@@ -563,6 +565,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                       key={pkg.id}
                       onClick={() => {
                         setSelectedPackageId(pkg.id);
+                        setSelectedSessionCount(pkg.sessions > 1 ? pkg.sessions : 10);
                         if (pkg.id === 'single') {
                           setRecurrence('one-time');
                         } else {
@@ -705,6 +708,31 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                         {t('booking.recurrence.custom.desc')}
                       </span>
                     </div>
+                    
+                    {recurrence !== 'one-time' && (
+                      <div className="mt-6 pt-5 border-t border-[#E8E4D9] dark:border-[#2E2E24]">
+                        <h4 className="text-sm font-semibold text-[#2D2C27] dark:text-[#EDEAE1] mb-3">
+                          {language === 'zh' ? '您想预约多少次课？' : 'How many sessions would you like to book?'}
+                        </h4>
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="range" 
+                            min="2" 
+                            max={selectedPackage.sessions} 
+                            value={selectedSessionCount}
+                            onChange={(e) => setSelectedSessionCount(Number(e.target.value))}
+                            className="flex-1 accent-[#5A5A40] dark:accent-[#A3B18A]"
+                          />
+                          <span className="font-serif font-bold text-lg text-[#5A5A40] dark:text-[#A3B18A] w-12 text-center">
+                            {selectedSessionCount}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-[#8C867A] dark:text-[#A6A295] mt-1 font-medium">
+                          <span>2 {language === 'zh' ? '次' : 'sessions'}</span>
+                          <span>{selectedPackage.sessions} {language === 'zh' ? '次' : 'sessions'}</span>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -968,7 +996,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
                 <div className="flex justify-between pb-3 border-b border-[#E8E4D9] dark:border-[#2E2E24]">
                   <span className="text-[#8C867A] dark:text-[#A6A295]">{t('booking.reviewPackage')}</span>
                   <span className="font-serif font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
-                    {t(selectedPackage.titleKey)} ({selectedPackage.sessions} {language === 'zh' ? '课时' : 'sessions'})
+                    {t(selectedPackage.titleKey)} ({targetSessions} {language === 'zh' ? '课时' : 'sessions'})
                   </span>
                 </div>
 
