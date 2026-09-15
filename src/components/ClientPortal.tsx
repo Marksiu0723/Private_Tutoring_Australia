@@ -58,6 +58,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
   const [activeTab, setActiveTab] = useState<'upcoming' | 'pending' | 'past' | 'cancelled' | 'uploads' | 'account'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Student uploads state
@@ -307,6 +308,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       setAppointments([]);
     } finally {
       setLoading(false);
+      setRefreshKey(Date.now()); // trigger visual re-render if needed
     }
   }, [user, getAuthHeaders]);
 

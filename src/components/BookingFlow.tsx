@@ -59,6 +59,7 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
     businessSettings,
     adminAppointments,
     createAppointmentsPublic,
+    refreshData,
   } = useData();
 
   const getServiceName = (service: Service) => {
@@ -425,6 +426,8 @@ export const BookingFlow: React.FC<BookingFlowProps> = ({
       setSubmitError(res.error || 'Failed to submit appointments. Please try again.');
       return;
     }
+
+    refreshData();
 
     // Success state using local data
     setConfirmedData({
