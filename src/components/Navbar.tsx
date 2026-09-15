@@ -211,14 +211,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            {/* Mobile Actions: Lang Button, Menu Toggle */}
+            {/* Mobile Actions: Portal Button, Menu Toggle */}
             <div className="flex sm:hidden items-center gap-2">
               <button
-                id="mobile-lang-btn"
-                onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
-                className="px-2.5 py-1.5 text-xs font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
+                id="mobile-portal-btn"
+                onClick={isAdmin ? onOpenAdmin : onOpenClientPortal}
+                className="flex items-center justify-center p-2 text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
+                aria-label="Client Portal"
               >
-                {language === 'en' ? 'ZH' : 'EN'}
+                <User className="w-4 h-4" />
               </button>
               <button
                 id="mobile-menu-toggle-btn"
@@ -239,18 +240,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           id="mobile-nav-drawer"
           className="sm:hidden border-b border-[#E8E4D9] dark:border-[#2D2D24] bg-[#FDFCF8] dark:bg-[#171714] px-4 pt-3 pb-6 space-y-3 animate-in fade-in-50"
         >
-          {/* Client Portal Button in Mobile Drawer */}
-          <button
-            onClick={() => {
-              setMobileMenuOpen(false);
-              isAdmin ? onOpenAdmin() : onOpenClientPortal();
-            }}
-            className="w-full h-11 px-4 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-wider font-semibold text-[#4A4A40] dark:text-[#EDEAE1] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
-          >
-            <User className="w-4 h-4 text-[#5A5A40] dark:text-[#A3B18A]" />
-            <span>{isAdmin ? 'Admin Portal' : t('nav.clientPortal')}</span>
-          </button>
-
           {/* Book Button in Mobile Drawer */}
           <button
             onClick={() => {
@@ -264,18 +253,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ArrowRight className="w-4 h-4 ml-1 opacity-80" />
           </button>
 
-          {/* Admin Button in Mobile Drawer */}
-          <button
-            id="mobile-nav-admin-btn"
-            onClick={() => {
-              setMobileMenuOpen(false);
-              onOpenAdmin();
-            }}
-            className="w-full h-9 px-4 inline-flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#5A5A40] dark:text-[#A3B18A]" />
-            <span>{t('nav.admin')}</span>
-          </button>
+          {/* Language Selector in Mobile Drawer */}
+          <div className="pt-2 border-t border-[#E8E4D9] dark:border-[#2D2D24] flex items-center justify-between">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-[#8C867A] dark:text-[#A6A295] px-1">
+              Language / 语言
+            </div>
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+              className="px-3 py-1.5 text-xs font-semibold text-[#5A5A40] dark:text-[#C6D4AB] bg-[#F5F2ED] dark:bg-[#20201A] rounded-full border border-[#E8E4D9] dark:border-[#313128] cursor-pointer"
+            >
+              {language === 'en' ? '中文 (ZH)' : 'English (EN)'}
+            </button>
+          </div>
 
           {/* Theme Selector Segmented in Mobile Drawer */}
           <div className="pt-2 border-t border-[#E8E4D9] dark:border-[#2D2D24]">

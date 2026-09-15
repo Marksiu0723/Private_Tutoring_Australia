@@ -476,6 +476,53 @@ app.delete('/api/admin/clients/:email', async (req: Request, res: Response): Pro
   }
 });
 
+// 7. Admin Change Client Password
+app.put('/api/admin/clients/:email/password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminEmail = await getVerifiedUserEmail(req);
+    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
+    
+    if (!adminEmail || !ADMIN_EMAILS.includes(adminEmail.toLowerCase())) {
+      res.status(401).json({ error: 'Unauthorized. Admin access required.' });
+      return;
+    }
+    
+    const targetEmail = req.params.email;
+    const { newPassword } = req.body;
+    
+    if (!targetEmail || !newPassword) {
+      res.status(400).json({ error: 'Client email and new password are required.' });
+      return;
+    }
+    
+    if (serverSupabase) {
+      const { data: usersData, error: usersErr } = await serverSupabase.auth.admin.listUsers();
+      if (usersErr) {
+        res.status(500).json({ error: usersErr.message });
+        return;
+      }
+      
+      const targetUser = usersData.users.find((u: any) => u.email?.toLowerCase() === targetEmail.toLowerCase());
+      if (targetUser) {
+        const { error: updateErr } = await serverSupabase.auth.admin.updateUserById(targetUser.id, {
+          password: newPassword
+        });
+        if (updateErr) {
+          res.status(500).json({ error: updateErr.message });
+          return;
+        }
+      } else {
+        res.status(404).json({ error: 'Client account not found.' });
+        return;
+      }
+    }
+    
+    res.json({ success: true, message: 'Client password updated successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Vite middleware or static serving
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

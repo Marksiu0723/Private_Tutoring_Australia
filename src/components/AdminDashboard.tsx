@@ -15,7 +15,7 @@ import {
   Search,
   Plus,
   Edit2,
-  Trash2,
+  Trash2, Key,
   AlertCircle,
   CheckCircle2,
   Lock,
@@ -30,7 +30,7 @@ import {
   Check,
   RotateCcw,
   Save,
-  Video,
+  Video, ArrowUp, ArrowDown, ArrowUpDown,
   Users,
 } from 'lucide-react';
 import CalendarWidget from './CalendarWidget';
@@ -156,6 +156,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
   const [settingsError, setSettingsError] = useState<string | null>(null);
   
   const [deletingClient, setDeletingClient] = useState<string | null>(null);
+  const [passwordResetClient, setPasswordResetClient] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordResetting, setPasswordResetting] = useState(false);
+
+  const handleOpenPasswordReset = (email: string) => {
+    setPasswordResetClient(email);
+    setNewPassword('');
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordResetClient || !newPassword || newPassword.length < 6) {
+      alert('Please enter a valid password (min 6 characters).');
+      return;
+    }
+
+    setPasswordResetting(true);
+    try {
+      const response = await fetch(`/api/admin/clients/${encodeURIComponent(passwordResetClient)}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update client password.');
+      }
+      alert('Password updated successfully.');
+      setPasswordResetClient(null);
+    } catch (err: any) {
+      alert(err.message || 'An error occurred while updating the password.');
+    } finally {
+      setPasswordResetting(false);
+    }
+  };
 
   const handleDeleteClient = async (email: string) => {
     if (!confirm(`Are you sure you want to delete the account for ${email}? This action cannot be undone.`)) {
@@ -583,6 +621,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
 
     return true;
   });
+
+  type SortKey = 'client' | 'service' | 'datetime' | 'status';
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: SortKey) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedAppointments = React.useMemo(() => {
+    const sortableItems = [...filteredAppointments];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        if (sortConfig.key === 'client') {
+          return sortConfig.direction === 'asc' 
+            ? (a.full_name || '').localeCompare(b.full_name || '')
+            : (b.full_name || '').localeCompare(a.full_name || '');
+        } else if (sortConfig.key === 'service') {
+          const aSrv = a.service?.name || services.find(s => s.id === a.service_id)?.name || '';
+          const bSrv = b.service?.name || services.find(s => s.id === b.service_id)?.name || '';
+          return sortConfig.direction === 'asc'
+            ? aSrv.localeCompare(bSrv)
+            : bSrv.localeCompare(aSrv);
+        } else if (sortConfig.key === 'datetime') {
+          const aDateTime = `${a.appointment_date}T${a.start_time}`;
+          const bDateTime = `${b.appointment_date}T${b.start_time}`;
+          return sortConfig.direction === 'asc'
+            ? aDateTime.localeCompare(bDateTime)
+            : bDateTime.localeCompare(aDateTime);
+        } else if (sortConfig.key === 'status') {
+          return sortConfig.direction === 'asc'
+            ? (a.status || '').localeCompare(b.status || '')
+            : (b.status || '').localeCompare(a.status || '');
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredAppointments, sortConfig, services]);
 
   // Handle appointment status change
   const handleUpdateApptStatus = async (id: string, newStatus: AppointmentStatus) => {
@@ -1454,19 +1534,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs min-w-[700px]">
-                    <thead className="bg-[#E8E4D9]/60 dark:bg-[#25251E] border-b border-[#E8E4D9] dark:border-[#2E2E24] text-[#5A5A40] dark:text-[#A3B18A] font-semibold uppercase tracking-wider text-[10px]">
+                    <thead className="bg-[#E8E4D9]/60 dark:bg-[#25251E] border-b border-[#E8E4D9] dark:border-[#2E2E24] text-[#5A5A40] dark:text-[#A3B18A] font-semibold uppercase tracking-wider text-[10px] select-none">
                       <tr>
-                        <th className="p-4">{t('admin.colClient')}</th>
-                        <th className="p-4">{t('admin.colService')}</th>
-                        <th className="p-4">{t('admin.colDateTime')}</th>
+                        <th className="p-4 cursor-pointer hover:bg-[#E8E4D9]/80 transition-colors group" onClick={() => handleSort('client')}>
+                          {t('admin.colClient')} {sortConfig?.key === 'client' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 inline-block" /> : <ArrowDown className="w-3 h-3 ml-1 inline-block" />) : <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-40 inline-block transition-opacity" />}
+                        </th>
+                        <th className="p-4 cursor-pointer hover:bg-[#E8E4D9]/80 transition-colors group" onClick={() => handleSort('service')}>
+                          {t('admin.colService')} {sortConfig?.key === 'service' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 inline-block" /> : <ArrowDown className="w-3 h-3 ml-1 inline-block" />) : <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-40 inline-block transition-opacity" />}
+                        </th>
+                        <th className="p-4 cursor-pointer hover:bg-[#E8E4D9]/80 transition-colors group" onClick={() => handleSort('datetime')}>
+                          {t('admin.colDateTime')} {sortConfig?.key === 'datetime' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 inline-block" /> : <ArrowDown className="w-3 h-3 ml-1 inline-block" />) : <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-40 inline-block transition-opacity" />}
+                        </th>
                         <th className="p-4">{t('admin.colContact')}</th>
                         <th className="p-4">{t('admin.colNotes')}</th>
-                        <th className="p-4">{t('admin.colStatus')}</th>
+                        <th className="p-4 cursor-pointer hover:bg-[#E8E4D9]/80 transition-colors group" onClick={() => handleSort('status')}>
+                          {t('admin.colStatus')} {sortConfig?.key === 'status' ? (sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 ml-1 inline-block" /> : <ArrowDown className="w-3 h-3 ml-1 inline-block" />) : <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-40 inline-block transition-opacity" />}
+                        </th>
                         <th className="p-4 text-right">{t('admin.colActions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E8E4D9] dark:divide-[#2E2E24]">
-                      {filteredAppointments.map((appt) => {
+                      {sortedAppointments.map((appt) => {
                         const matchedService = appt.service?.name || services.find((s) => s.id === appt.service_id)?.name || 'Science Tutoring';
                         const isUpdating = updatingApptId === appt.id;
 
@@ -1634,14 +1722,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                             {client.lastBookingDate ? new Date(client.lastBookingDate).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <button
-                              onClick={() => handleDeleteClient(client.email)}
-                              disabled={deletingClient === client.email}
-                              title="Delete Account"
-                              className="p-2 text-[#8A8575] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleOpenPasswordReset(client.email)}
+                                title="Change Password"
+                                className="p-2 text-[#8A8575] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] hover:bg-[#F5F2ED] dark:hover:bg-[#25251F] rounded-lg transition-colors"
+                              >
+                                <Key className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClient(client.email)}
+                                disabled={deletingClient === client.email}
+                                title="Delete Account"
+                                className="p-2 text-[#8A8575] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -2619,6 +2716,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
                 Save Link
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PASSWORD RESET MODAL */}
+      {passwordResetClient && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2E2E25]/60 dark:bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#FDFCF8] dark:bg-[#1C1C17] rounded-[24px] p-6 max-w-sm w-full border border-[#E8E4D9] dark:border-[#33332A] shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E8E4D9] dark:border-[#33332A] mb-4">
+              <h3 className="font-serif font-bold text-lg text-[#2D2C27] dark:text-[#EDEAE1] flex items-center gap-2">
+                <Key className="w-5 h-5 text-[#5A5A40] dark:text-[#A3B18A]" />
+                Change Password
+              </h3>
+              <button
+                onClick={() => setPasswordResetClient(null)}
+                className="p-1.5 rounded-full text-[#8C867A] hover:text-[#2D2C27] dark:hover:text-[#EDEAE1] hover:bg-[#E8E4D9] dark:hover:bg-[#2A2A22]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleResetPassword}>
+              <div className="mb-4">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                  Client Email
+                </label>
+                <div className="text-sm text-[#2D2C27] dark:text-[#EDEAE1] p-3 bg-[#F5F2ED] dark:bg-[#23231D] rounded-xl border border-[#E8E4D9] dark:border-[#33332A]">
+                  {passwordResetClient}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8C867A] dark:text-[#A6A295] mb-1.5">
+                  New Password
+                </label>
+                <input
+                  type="text"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password (min 6 chars)"
+                  className="w-full px-3 py-2.5 bg-white dark:bg-[#23231D] border border-[#E8E4D9] dark:border-[#33332A] rounded-xl text-sm focus:outline-none focus:border-[#5A5A40] dark:focus:border-[#A3B18A]"
+                  autoComplete="off"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPasswordResetClient(null)}
+                  className="px-4 py-2 text-[#6B6658] dark:text-[#A6A295] hover:bg-[#E8E4D9] dark:hover:bg-[#25251E] rounded-full font-semibold uppercase tracking-wider text-[11px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordResetting || newPassword.length < 6}
+                  className="px-5 py-2 bg-[#5A5A40] dark:bg-[#A3B18A] hover:bg-[#484833] dark:hover:bg-[#8F9E72] disabled:opacity-50 text-white rounded-full font-semibold uppercase tracking-widest text-[11px] shadow-xs flex items-center gap-2"
+                >
+                  {passwordResetting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Save Password
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -35,6 +35,7 @@ const MainAppContent: React.FC = () => {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [pendingBooking, setPendingBooking] = useState<{ type: 'package' | 'generic', pkgId?: PackageId } | null>(null);
 
   // Trigger transition when auth changes
   const prevUser = useRef(user);
@@ -102,12 +103,22 @@ const MainAppContent: React.FC = () => {
 
   // Trigger booking with specific package from Structured Tutoring Plans
   const handleSelectPackage = (pkgId: PackageId) => {
+    if (!user) {
+      setPendingBooking({ type: 'package', pkgId });
+      handleOpenAuth('signin');
+      return;
+    }
     setSelectedPackageId(pkgId);
     setBookingModalOpen(true);
   };
 
   // Open generic booking
   const handleOpenBooking = () => {
+    if (!user) {
+      setPendingBooking({ type: 'generic' });
+      handleOpenAuth('signin');
+      return;
+    }
     setSelectedServiceId(undefined);
     setSelectedPackageId(undefined);
     setBookingModalOpen(true);
@@ -204,9 +215,23 @@ const MainAppContent: React.FC = () => {
       <AuthModal
         isOpen={authModalOpen}
         initialMode={authModalMode}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => {
+          setAuthModalOpen(false);
+          setPendingBooking(null);
+        }}
         onSuccess={() => {
           setAuthModalOpen(false);
+          if (pendingBooking) {
+            if (pendingBooking.type === 'package' && pendingBooking.pkgId) {
+              setSelectedPackageId(pendingBooking.pkgId);
+              setBookingModalOpen(true);
+            } else if (pendingBooking.type === 'generic') {
+              setSelectedServiceId(undefined);
+              setSelectedPackageId(undefined);
+              setBookingModalOpen(true);
+            }
+            setPendingBooking(null);
+          }
         }}
       />
     </div>
