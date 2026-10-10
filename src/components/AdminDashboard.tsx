@@ -45,6 +45,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     user,
     session,
     isAdmin,
+    loading: authLoading,
     adminCheckLoading,
     adminError,
     signIn,
@@ -379,6 +380,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
     document.body.removeChild(link);
   };
 
+  // If restoring auth session or verifying admin status:
+  if (authLoading || adminCheckLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF8] dark:bg-[#11110E] flex items-center justify-center p-4 transition-colors">
+        <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-8 border border-[#E8E4D9] dark:border-[#313128] shadow-lg text-center space-y-3.5 max-w-sm w-full">
+          <div className="w-8 h-8 border-3 border-[#5A5A40] dark:border-[#A3B18A] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">
+            {authLoading ? 'Loading administrator portal...' : 'Verifying administrator access...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // If unauthenticated:
   if (!user) {
     return (
@@ -459,18 +474,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToSite }) 
               ← Return to public website
             </button>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If signed in but verifying admin status:
-  if (adminCheckLoading) {
-    return (
-      <div className="min-h-screen bg-[#FDFCF8] dark:bg-[#11110E] flex items-center justify-center p-4 transition-colors">
-        <div className="bg-[#F5F2ED] dark:bg-[#1A1A15] rounded-[28px] p-8 border border-[#E8E4D9] dark:border-[#313128] shadow-lg text-center space-y-3.5 max-w-sm w-full">
-          <div className="w-8 h-8 border-3 border-[#5A5A40] dark:border-[#A3B18A] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-[#2D2C27] dark:text-[#EDEAE1]">Verifying administrator access...</p>
         </div>
       </div>
     );

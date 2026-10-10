@@ -26,10 +26,23 @@ import { PackageId } from './types';
 
 type CurrentView = 'landing' | 'client-portal' | 'admin-dashboard';
 
+function getInitialView(): CurrentView {
+  if (typeof window === 'undefined') return 'landing';
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+
+  if (path === '/admin' || path.startsWith('/admin/') || hash === '#admin' || hash === '#admin-portal') {
+    return 'admin-dashboard';
+  } else if (path === '/portal' || path === '/student' || hash === '#portal' || hash === '#client-portal' || hash === '#student') {
+    return 'client-portal';
+  }
+  return 'landing';
+}
+
 const MainAppContent: React.FC = () => {
-  const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<CurrentView>('landing');
-  const [targetView, setTargetView] = useState<CurrentView>('landing');
+  const { user, loading: authLoading } = useAuth();
+  const [currentView, setCurrentView] = useState<CurrentView>(getInitialView);
+  const [targetView, setTargetView] = useState<CurrentView>(getInitialView);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -37,20 +50,29 @@ const MainAppContent: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [pendingBooking, setPendingBooking] = useState<{ type: 'package' | 'generic', pkgId?: PackageId } | null>(null);
 
-  // Trigger transition when auth changes
-  const prevUser = useRef(user);
+  // Trigger transition when auth changes (explicit login/logout only, not initial mount hydration)
+  const initialAuthDone = useRef(false);
+  const prevUserId = useRef<string | null>(null);
+
   useEffect(() => {
-    // Only trigger if we actually went from logged out to logged in, or vice versa
-    if ((prevUser.current && !user) || (!prevUser.current && user)) {
+    if (authLoading) return;
+
+    const currentId = user ? user.id : null;
+    if (!initialAuthDone.current) {
+      initialAuthDone.current = true;
+      prevUserId.current = currentId;
+      return;
+    }
+
+    if (prevUserId.current !== currentId) {
       setIsTransitioning(true);
       const timer = setTimeout(() => {
         setIsTransitioning(false);
       }, 800);
-      prevUser.current = user;
+      prevUserId.current = currentId;
       return () => clearTimeout(timer);
     }
-    prevUser.current = user;
-  }, [user]);
+  }, [user, authLoading]);
 
   // Transition helper for view changes
   const switchViewWithTransition = (view: CurrentView) => {

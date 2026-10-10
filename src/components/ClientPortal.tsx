@@ -39,7 +39,7 @@ interface ClientPortalProps {
 
 export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpenBooking, onOpenAuth }) => {
   const { t, language } = useLanguage();
-  const { user, session, signOut, loginAsDemoClient, signIn, updatePassword, deleteAccount } = useAuth();
+  const { user, session, signOut, loginAsDemoClient, signIn, updatePassword, deleteAccount, loading: authLoading } = useAuth();
   const { businessHours, blockedDates, businessSettings, services, adminAppointments, updateAppointmentStatus } = useData();
 
   const getServiceName = (s?: { name: string; id?: string } | null) => {
@@ -511,6 +511,20 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ onBackToSite, onOpen
       setAuthFormLoading(false);
     }
   };
+
+  // Guard during initial session hydration to prevent login form flash on page refresh
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#FDFCF8] dark:bg-[#171714] flex items-center justify-center p-4 transition-colors">
+        <div className="bg-[#F5F2ED] dark:bg-[#20201A] rounded-[28px] p-8 border border-[#E8E4D9] dark:border-[#313128] shadow-sm text-center space-y-3.5 max-w-sm w-full">
+          <div className="w-8 h-8 border-3 border-[#2A6F68] dark:border-[#52B788] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-[#2D2C27] dark:text-[#EDEAE1] tracking-wide">
+            {language === 'zh' ? '正在加载学生门户...' : 'Loading student portal...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // If user is not signed in, render the client portal login & demo view
   if (!user) {
