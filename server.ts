@@ -385,14 +385,86 @@ app.delete('/api/client/account', async (req: Request, res: Response): Promise<v
   }
 });
 
-// 5. Admin Appointments (Secure: verifies admin email via JWT before fetching ALL appointments)
+// Dynamic Admin Whitelist from public.admin_users table
+async function getDynamicAdminEmails(): Promise<string[]> {
+  const DEFAULT_ADMIN = 'shanon.lcm@gmail.com';
+  if (!serverSupabase) {
+    return [DEFAULT_ADMIN];
+  }
+
+  try {
+    const { data, error } = await serverSupabase
+      .from('admin_users')
+      .select('email');
+
+    if (error || !data) {
+      console.warn('Failed to query admin_users table:', error?.message);
+      return [DEFAULT_ADMIN];
+    }
+
+    const fetchedEmails = data
+      .map((row: any) => row.email?.trim().toLowerCase())
+      .filter((email: string | undefined): email is string => Boolean(email && email.includes('@')));
+
+    return Array.from(new Set([DEFAULT_ADMIN, ...fetchedEmails]));
+  } catch (err) {
+    console.warn('Exception querying admin_users table:', err);
+    return [DEFAULT_ADMIN];
+  }
+}
+
+async function isUserAuthorizedAdmin(req: Request): Promise<{ authorized: boolean; email?: string }> {
+  const verifiedEmail = await getVerifiedUserEmail(req);
+  const adminEmails = await getDynamicAdminEmails();
+
+  if (verifiedEmail && adminEmails.includes(verifiedEmail.toLowerCase())) {
+    return { authorized: true, email: verifiedEmail.toLowerCase() };
+  }
+
+  // Also check if Bearer token user.id exists in admin_users table
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ') && serverSupabase) {
+    const token = authHeader.split(' ')[1]?.trim();
+    if (token) {
+      try {
+        const { data: { user } } = await serverSupabase.auth.getUser(token);
+        if (user) {
+          const { data } = await serverSupabase
+            .from('admin_users')
+            .select('id, email')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (data) {
+            return { authorized: true, email: data.email?.toLowerCase() || user.email?.toLowerCase() };
+          }
+        }
+      } catch {
+        // Continue
+      }
+    }
+  }
+
+  return { authorized: false, email: verifiedEmail || undefined };
+}
+
+// Dynamic Admin Whitelist endpoint (syncs directly with public.admin_users)
+app.get('/api/admin/whitelist', async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  try {
+    const emails = await getDynamicAdminEmails();
+    res.json({ emails, success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, emails: ['shanon.lcm@gmail.com'] });
+  }
+});
+
+// 5. Admin Appointments (Secure: verifies admin email via JWT or admin_users before fetching ALL appointments)
 app.get('/api/admin/appointments', async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   try {
-    const userEmail = await getVerifiedUserEmail(req);
-    // Simple admin check
-    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com', 'markhwsiu@gmail.com'];
-    if (!userEmail || !ADMIN_EMAILS.includes(userEmail.toLowerCase())) {
+    const { authorized } = await isUserAuthorizedAdmin(req);
+    if (!authorized) {
       res.status(401).json({ error: 'Unauthorized. Admin access required.' });
       return;
     }
@@ -435,10 +507,8 @@ app.get('/api/admin/appointments', async (req: Request, res: Response): Promise<
 // 6. Admin Delete Client Account
 app.delete('/api/admin/clients/:email', async (req: Request, res: Response): Promise<void> => {
   try {
-    const adminEmail = await getVerifiedUserEmail(req);
-    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
-    
-    if (!adminEmail || !ADMIN_EMAILS.includes(adminEmail.toLowerCase())) {
+    const { authorized } = await isUserAuthorizedAdmin(req);
+    if (!authorized) {
       res.status(401).json({ error: 'Unauthorized. Admin access required.' });
       return;
     }
@@ -479,10 +549,8 @@ app.delete('/api/admin/clients/:email', async (req: Request, res: Response): Pro
 // 7. Admin Change Client Password
 app.put('/api/admin/clients/:email/password', async (req: Request, res: Response): Promise<void> => {
   try {
-    const adminEmail = await getVerifiedUserEmail(req);
-    const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
-    
-    if (!adminEmail || !ADMIN_EMAILS.includes(adminEmail.toLowerCase())) {
+    const { authorized } = await isUserAuthorizedAdmin(req);
+    if (!authorized) {
       res.status(401).json({ error: 'Unauthorized. Admin access required.' });
       return;
     }

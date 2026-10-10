@@ -259,15 +259,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured) return;
     setAdminAppointmentsLoading(true);
     try {
-      // 1. Try to fetch from backend API first to bypass RLS securely
+      // 1. Try to fetch from backend API first to bypass RLS securely if user is logged in
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
+        // If there is no authenticated session, exit quietly without triggering 401 unauthorized
+        if (!session?.access_token) {
+          setAdminAppointmentsLoading(false);
+          return;
+        }
+
         // Pass auth token and fallback email header
         const headers: Record<string, string> = {};
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`;
-        }
+        headers['Authorization'] = `Bearer ${session.access_token}`;
         if (session?.user?.email) {
           headers['x-user-email'] = session.user.email;
         }
@@ -284,12 +288,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setAdminAppointmentsLoading(false);
             return;
           }
+        } else if (response.status === 401) {
+          // Unauthenticated or not admin - terminate quietly
+          setAdminAppointmentsLoading(false);
+          return;
         } else {
-           console.warn('Backend API returned non-OK status:', response.status);
-           if (response.status === 401) {
-              setAdminAppointmentsLoading(false);
-              return;
-           }
+          console.warn('Backend API returned non-OK status:', response.status);
         }
       } catch (apiErr) {
         console.warn('API fetch for admin appointments failed, falling back to direct query:', apiErr);

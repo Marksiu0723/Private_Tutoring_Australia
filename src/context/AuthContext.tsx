@@ -32,7 +32,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAILS = ['shanon.lcm@gmail.com', 'skyraker111@gmail.com'];
+const DEFAULT_ADMIN_EMAILS = ['shanon.lcm@gmail.com'];
 
 // Helper to construct a valid Session token for preview / offline sessions
 function createMockSession(mockUser: any): Session {
@@ -64,21 +64,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [adminCheckLoading, setAdminCheckLoading] = useState<boolean>(false);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminWhitelist, setAdminWhitelist] = useState<string[]>(DEFAULT_ADMIN_EMAILS);
+
+  // Dynamically synchronize the admin whitelist with public.admin_users
+  const syncAdminWhitelist = useCallback(async (): Promise<string[]> => {
+    try {
+      const res = await fetch('/api/admin/whitelist', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.emails) && data.emails.length > 0) {
+          setAdminWhitelist(data.emails);
+          return data.emails;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync admin whitelist from server:', e);
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase.from('admin_users').select('email');
+        if (data && data.length > 0) {
+          const emails = Array.from(
+            new Set([
+              ...DEFAULT_ADMIN_EMAILS,
+              ...data.map((r: any) => r.email?.trim().toLowerCase()).filter(Boolean),
+            ])
+          );
+          setAdminWhitelist(emails);
+          return emails;
+        }
+      } catch (err) {
+        console.warn('Could not query admin_users table directly:', err);
+      }
+    }
+
+    return DEFAULT_ADMIN_EMAILS;
+  }, []);
 
   // Check if current user.id exists in admin_users table (exact requirement: admin_users.user_id = auth.uid())
   const checkAdminStatus = useCallback(async (userId: string, email?: string): Promise<boolean> => {
-    // Check known administrator emails
-    if (email && ADMIN_EMAILS.includes(email.toLowerCase())) {
+    const lowerEmail = email?.trim().toLowerCase();
+
+    // 1. Sync live whitelist from public.admin_users
+    const currentWhitelist = await syncAdminWhitelist();
+
+    // 2. Check against live whitelist
+    if (lowerEmail && currentWhitelist.includes(lowerEmail)) {
       setIsAdmin(true);
       setAdminError(null);
       return true;
     }
 
     if (!userId || !isSupabaseConfigured) {
-      if (email && ADMIN_EMAILS.includes(email.toLowerCase())) {
-        setIsAdmin(true);
-        return true;
-      }
       setIsAdmin(false);
       return false;
     }
@@ -87,15 +125,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAdminError(null);
 
     try {
+      // 3. Query public.admin_users by user_id OR email
       const { data, error } = await supabase
         .from('admin_users')
-        .select('id, user_id')
-        .eq('user_id', userId)
+        .select('id, user_id, email')
+        .or(`user_id.eq.${userId}${lowerEmail ? `,email.eq.${lowerEmail}` : ''}`)
         .maybeSingle();
 
       if (error) {
         console.warn('Admin status query note:', error.message);
-        if (email && ADMIN_EMAILS.includes(email.toLowerCase())) {
+        if (lowerEmail && currentWhitelist.includes(lowerEmail)) {
           setIsAdmin(true);
           return true;
         }
@@ -104,27 +143,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      const authorized = Boolean(
-        (data && data.user_id === userId) ||
-        (email && ADMIN_EMAILS.includes(email.toLowerCase()))
-      );
+      const authorized = Boolean(data);
       setIsAdmin(authorized);
       if (!authorized) {
         setAdminError('You are signed in, but you are not authorized as an admin.');
+      } else {
+        setAdminError(null);
+        if (lowerEmail && !currentWhitelist.includes(lowerEmail)) {
+          setAdminWhitelist(prev => [...prev, lowerEmail]);
+        }
       }
       return authorized;
     } catch (err: any) {
       console.warn('Admin status check exception:', err);
-      if (email && ADMIN_EMAILS.includes(email.toLowerCase())) {
-        setIsAdmin(true);
-        return true;
-      }
-      setIsAdmin(false);
-      return false;
+      const authorized = Boolean(lowerEmail && currentWhitelist.includes(lowerEmail));
+      setIsAdmin(authorized);
+      return authorized;
     } finally {
       setAdminCheckLoading(false);
     }
-  }, []);
+  }, [syncAdminWhitelist]);
 
   const loginAsDemoAdmin = useCallback(() => {
     const mockAdminUser: any = {
@@ -163,6 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function initializeAuth() {
       try {
+        await syncAdminWhitelist();
         const wasDemoAdmin = localStorage.getItem('shanon_demo_admin') === 'true';
 
         if (!isSupabaseConfigured) {
@@ -222,22 +261,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [checkAdminStatus, loginAsDemoAdmin]);
+  }, [checkAdminStatus, loginAsDemoAdmin, syncAdminWhitelist]);
 
   const signIn = async (email: string, password: string, context?: 'admin' | 'client') => {
     setAdminError(null);
     const trimmedEmail = email.trim().toLowerCase();
-    const isOwnerEmail = ADMIN_EMAILS.includes(trimmedEmail);
+
+    // Dynamically retrieve the latest admin whitelist from public.admin_users
+    const currentWhitelist = await syncAdminWhitelist();
+    const isOwnerEmail = currentWhitelist.includes(trimmedEmail);
 
     if (context === 'client' && isOwnerEmail) {
       return { success: false, error: 'Admin emails cannot be used to log into the client portal.' };
     }
-    if (context === 'admin' && !isOwnerEmail) {
-      return { success: false, error: 'Only authorized administrator emails can access the admin dashboard.' };
-    }
 
     // If Supabase credentials are not yet configured or placeholder, offer smooth preview sign-in
     if (!isSupabaseConfigured) {
+      if (context === 'admin' && !isOwnerEmail) {
+        return { success: false, error: 'Only authorized administrator emails can access the admin dashboard.' };
+      }
       const mockUser: any = {
         id: isOwnerEmail ? 'admin-shanon-lee' : `user-${Date.now()}`,
         email: trimmedEmail,
@@ -268,7 +310,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(data.session);
       }
       if (data.user) {
-        await checkAdminStatus(data.user.id, data.user.email);
+        const authorizedAdmin = await checkAdminStatus(data.user.id, data.user.email);
+        if (context === 'admin' && !authorizedAdmin) {
+          await signOut();
+          return {
+            success: false,
+            error: 'You are signed in, but your account is not authorized as an administrator in public.admin_users.'
+          };
+        }
       }
 
       return { success: true };
